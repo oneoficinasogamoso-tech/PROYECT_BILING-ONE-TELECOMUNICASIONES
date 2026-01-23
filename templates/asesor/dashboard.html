@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Asesor - ONE</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="ONE" class="sidebar-logo">
+                <h3>Asesor</h3>
+            </div>
+            
+            <div class="user-info">
+                <div class="user-avatar">{{ nombre[0] }}</div>
+                <p class="user-name">{{ nombre }}</p>
+                <span class="user-role">ASESOR</span>
+            </div>
+            
+            <ul class="sidebar-menu">
+                <li class="active"><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> Dashboard</a></li>
+            </ul>
+            
+            <a href="{{ url_for('login.logout') }}" class="btn-logout">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"></path>
+                </svg>
+                Cerrar Sesión
+            </a>
+        </nav>
+        
+        <main class="main-content">
+            <header class="content-header">
+                <h1>Panel de Asesoría</h1>
+                <p>Bienvenido, {{ nombre }}</p>
+            </header>
+            
+            <div class="dashboard-grid">
+                <div class="card card-primary">
+                    <div class="card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                    </div>
+                    <div class="card-content">
+                        <h3>Clientes</h3>
+                        <p>Gestiona tus clientes</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
