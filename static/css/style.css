@@ -738,3 +738,25 @@ animation-iteration-count: 1 !important;
 transition-duration: 0.01ms !important;
 }
 }
+
+@media (max-width: 768px) {
+
+    /* Sidebar como header */
+    .sidebar {
+        left: 0;
+        width: 100%;
+        height: auto;
+        position: relative;
+        padding: 20px;
+        border-radius: 0 0 24px 24px;
+    }
+
+    .dashboard-container {
+        flex-direction: column;
+    }
+
+    .main-content {
+        margin-left: 0;
+        padding-top: 20px;
+    }
+}
