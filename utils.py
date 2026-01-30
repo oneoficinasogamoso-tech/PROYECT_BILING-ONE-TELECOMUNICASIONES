@@ -5,8 +5,11 @@ import pytesseract
 import os
 from werkzeug.utils import secure_filename
 from config import Config
-
-
+from docxtpl import DocxTemplate
+from docx2pdf import convert
+import subprocess
+import platform
+from datetime import datetime, timedelta
 
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 os.environ["TESSDATA_PREFIX"] = r"C:\Program Files\Tesseract-OCR\tessdata"
@@ -209,263 +212,8 @@ def verificar_firma_manual(image_path):
     
     ACEPTA:
     - Firmas manuscritas reales (incluso con nombre completo)
-    - Papel blanco con cuadrículas
-    - Trazos naturales e irregulares
-    """
-    try:
-        img = cv2.imread(image_path)
-        if img is None:
-            try:
-                pil_img = Image.open(image_path)
-                img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
-            except:
-                return False, "No se pudo leer la imagen"
-        
-        height, width = img.shape[:2]
-        if height < 30 or width < 30:
-            return False, "Imagen demasiado pequeña"
-        
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        
-        # ========== VALIDACIÓN 1: FONDO DE CÉDULA (AMARILLENTO + PATRONES) ==========
-        
-        # 1.1 Analizar color GENERAL de la imagen (no solo píxeles >200)
-        # Cédulas pueden ser fotos oscuras pero mantienen el tono amarillento
-        
-        # Analizar áreas más claras de la imagen (top 50-70% de brillos)
-        umbral_adaptativo = int(np.percentile(gray, 30))  # Umbral del 30% más claro
-        mask_areas_claras = gray > umbral_adaptativo
-        
-        es_amarillento = False
-        tiene_variacion_cedula = False
-        
-        if np.sum(mask_areas_claras) > (gray.size * 0.2):  # Al menos 20% de la imagen
-            pixeles_claros = img[mask_areas_claras]
-            
-            if len(pixeles_claros) > 100:
-                # Análisis HSV
-                fondo_hsv = cv2.cvtColor(pixeles_claros.reshape(1, -1, 3), cv2.COLOR_BGR2HSV)
-                hue = np.mean(fondo_hsv[:, :, 0])
-                sat = np.mean(fondo_hsv[:, :, 1])
-                val = np.mean(fondo_hsv[:, :, 2])
-                
-                # Detectar amarillo/beige característico de cédula
-                # Hue 25-45 = amarillo/beige, Sat 15-60 = sutil, Val > 140
-                if 25 <= hue <= 45 and 15 <= sat <= 60 and val >= 140:
-                    es_amarillento = True
-                
-                # Análisis BGR - característica clave de amarillo
-                fondo_bgr = pixeles_claros.reshape(-1, 3)
-                mean_b = np.mean(fondo_bgr[:, 0])
-                mean_g = np.mean(fondo_bgr[:, 1])
-                mean_r = np.mean(fondo_bgr[:, 2])
-                
-                # Amarillo/beige: G y R mayores que B
-                if mean_b > 0 and mean_g > mean_b and mean_r > mean_b:
-                    ratio_amarillo = (mean_g + mean_r) / (2 * mean_b)
-                    
-                    # Ratio > 1.05 indica tono amarillento
-                    if ratio_amarillo > 1.05:
-                        es_amarillento = True
-                
-                # Variación característica de cédula (textura sutil)
-                std_b = np.std(fondo_bgr[:, 0])
-                std_g = np.std(fondo_bgr[:, 1])
-                std_r = np.std(fondo_bgr[:, 2])
-                
-                # Cédulas tienen variación sutil (8-35)
-                # Papel blanco puro < 8 o papel fotografiado > 35
-                if 8 < std_b < 35 and 8 < std_g < 35 and 8 < std_r < 35:
-                    tiene_variacion_cedula = True
-        
-        # 1.2 Detección directa de fondo amarillento evidente
-        _, mask_fondo_claro = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
-        pixeles_muy_claros = img[mask_fondo_claro == 255]
-        
-        if len(pixeles_muy_claros) > 100:
-            fondo_hsv = cv2.cvtColor(pixeles_muy_claros.reshape(1, -1, 3), cv2.COLOR_BGR2HSV)
-            hue = np.mean(fondo_hsv[:, :, 0])
-            sat = np.mean(fondo_hsv[:, :, 1])
-            val = np.mean(fondo_hsv[:, :, 2])
-            
-            # Amarillo evidente
-            if 15 <= hue <= 45 and sat > 25 and val >= 170:
-                return False, "Fondo amarillento de cédula detectado. No use firma de cédula"
-        
-        # 1.3 Si es amarillento + tiene variación de cédula = RECHAZAR
-        if es_amarillento and tiene_variacion_cedula:
-            return False, "Características de papel de cédula detectadas. No use firma de cédula"
-        
-        # 1.4 Solo amarillento pero sin variación característica (puede ser iluminación)
-        if es_amarillento:
-            # Verificar si es amarillo fuerte o solo iluminación
-            img_hsv_completa = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-            sat_general = np.mean(img_hsv_completa[:, :, 1])
-            
-            if sat_general > 20:  # Saturación significativa en toda la imagen
-                return False, "Tono amarillento detectado. Verifique que no sea firma de cédula"
-        
-        # ========== VALIDACIÓN 2: FONDO BLANCO DEMASIADO PERFECTO (IMAGEN DIGITAL) ==========
-        # Analizar uniformidad del fondo blanco
-        pixeles_blancos = gray[gray > 230]
-        
-        if len(pixeles_blancos) > (gray.size * 0.7):  # Más del 70% es muy blanco
-            # Calcular variación del fondo blanco
-            std_fondo_blanco = np.std(pixeles_blancos)
-            mean_fondo_blanco = np.mean(pixeles_blancos)
-            
-            # Fondo digital tiene MUY poca variación (casi todos 255)
-            # Fondo real (foto de papel) tiene más variación por iluminación/textura
-            if std_fondo_blanco < 3.0 and mean_fondo_blanco > 250:
-                return False, "Fondo blanco demasiado perfecto. Parece imagen digital, no foto real"
-        
-        # ========== VALIDACIÓN 3: DETECTAR BORDES DEMASIADO DEFINIDOS ==========
-        # Analizar contraste extremo (típico de gráficos digitales)
-        pixeles_oscuros = gray[gray < 100]
-        pixeles_claros = gray[gray > 200]
-        
-        total_pixeles = gray.size
-        porcentaje_extremos = (len(pixeles_oscuros) + len(pixeles_claros)) / total_pixeles
-        
-        # Si más del 95% son extremos (muy negro o muy blanco) = digital
-        if porcentaje_extremos > 0.95:
-            # Calcular gradiente para ver si hay transiciones suaves
-            gradiente = cv2.Sobel(gray, cv2.CV_64F, 1, 1, ksize=3)
-            gradiente_std = np.std(gradiente)
-            
-            # Gráficos digitales tienen transiciones muy abruptas
-            if gradiente_std > 50:
-                return False, "Bordes muy definidos. Parece gráfico digital, no firma real"
-        
-        # ========== VALIDACIÓN 4: NITIDEZ ==========
-        nitidez = calcular_nitidez_firma(gray)
-        if nitidez < 3:
-            return False, "Firma muy borrosa"
-        
-        # ========== EXTRAER TRAZOS ==========
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-        enhanced = clahe.apply(gray)
-        
-        mejor_thresh = None
-        mejor_porcentaje = 0
-        
-        for umbral in [120, 140, 160, 180, 200]:
-            _, thresh_temp = cv2.threshold(enhanced, umbral, 255, cv2.THRESH_BINARY_INV)
-            pixeles = np.sum(thresh_temp > 0)
-            porcentaje = (pixeles / thresh_temp.size) * 100
-            
-            if 0.2 <= porcentaje <= 45:
-                if mejor_thresh is None or abs(porcentaje - 8) < abs(mejor_porcentaje - 8):
-                    mejor_porcentaje = porcentaje
-                    mejor_thresh = thresh_temp
-        
-        if mejor_thresh is None:
-            mejor_thresh = cv2.adaptiveThreshold(enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-                                                 cv2.THRESH_BINARY_INV, 11, 2)
-            pixeles = np.sum(mejor_thresh > 0)
-            porcentaje = (pixeles / mejor_thresh.size) * 100
-        else:
-            porcentaje = mejor_porcentaje
-        
-        if porcentaje < 0.15:
-            return False, "No se detectan trazos de firma"
-        
-        if porcentaje > 50:
-            return False, "Imagen muy oscura"
-        
-        # ========== PREPARAR ==========
-        kernel = np.ones((2,2), np.uint8)
-        thresh_limpio = cv2.morphologyEx(mejor_thresh, cv2.MORPH_CLOSE, kernel, iterations=1)
-        
-        # Remover líneas de cuaderno (esto está bien, las cuadrículas no afectan)
-        try:
-            kernel_horiz = cv2.getStructuringElement(cv2.MORPH_RECT, (60, 1))
-            lineas = cv2.morphologyEx(thresh_limpio, cv2.MORPH_OPEN, kernel_horiz, iterations=2)
-            thresh_limpio = cv2.subtract(thresh_limpio, lineas)
-        except:
-            pass
-        
-        # ========== OBTENER CONTORNOS ==========
-        contornos, _ = cv2.findContours(thresh_limpio, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        contornos_validos = [c for c in contornos if cv2.contourArea(c) > 20]
-        
-        if len(contornos_validos) < 1:
-            return False, "No se detectan trazos de firma"
-        
-        # ========== VALIDACIÓN 5: ANALIZAR NATURALIDAD DE TRAZOS ==========
-        # Firmas reales tienen variación de grosor y bordes irregulares
-        # Gráficos digitales son muy uniformes
-        
-        trazos_muy_uniformes = 0
-        total_trazos = 0
-        
-        for contorno in contornos_validos:
-            area = cv2.contourArea(contorno)
-            if area < 50:
-                continue
-            
-            total_trazos += 1
-            
-            # Analizar perímetro vs área
-            perimetro = cv2.arcLength(contorno, True)
-            if perimetro > 0:
-                compacidad = (4 * np.pi * area) / (perimetro ** 2)
-                
-                # Trazos muy circulares/perfectos = digital
-                # Trazos alargados/irregulares = manuscrito
-                if compacidad > 0.7:  # Muy circular
-                    trazos_muy_uniformes += 1
-        
-        # Si muchos trazos son muy uniformes/circulares = posible digital
-        if total_trazos >= 3 and trazos_muy_uniformes >= total_trazos * 0.7:
-            return False, "Trazos muy uniformes. Parece gráfico digital"
-        
-        # ========== VALIDACIÓN 6: ANALIZAR TEXTURA DEL PAPEL ==========
-        # Fotos reales de papel tienen textura/ruido
-        # Imágenes digitales son muy limpias
-        
-        # Tomar muestra del fondo
-        muestra_fondo = gray[gray > 200]
-        
-        if len(muestra_fondo) > 100:
-            # Calcular entropía (complejidad) del fondo
-            hist, _ = np.histogram(muestra_fondo, bins=20, range=(200, 256))
-            hist = hist / hist.sum()
-            entropia = -np.sum(hist * np.log2(hist + 1e-10))
-            
-            # Fondo digital tiene muy baja entropía (casi todos píxeles iguales)
-            # Fondo real tiene más variación
-            if entropia < 1.5:
-                # Verificar también uniformidad extrema
-                std_muestra = np.std(muestra_fondo)
-                if std_muestra < 2.5:
-                    return False, "Fondo muy uniforme. Parece imagen digital"
-        
-        # ========== TODO OK - FIRMA REAL ACEPTADA ==========
-        return True, "Firma manuscrita válida"
-        
-    except Exception as e:
-        # Fallback: Si hay error, ser permisivo con firmas que parecen reales
-        try:
-            # Análisis simplificado
-            _, thresh = cv2.threshold(gray, 170, 255, cv2.THRESH_BINARY_INV)
-            pixeles = np.sum(thresh > 0)
-            porcentaje = (pixeles / thresh.size) * 100
-            
-            # Si tiene una cantidad razonable de tinta = probablemente firma real
-            if 0.5 <= porcentaje <= 30:
-                return True, "Firma aceptada (análisis simplificado)"
-        except:
-            pass
-        
-        return False, f"Error en análisis: {str(e)}"
-
-
-
-def digitalizar_firma(image_path, output_path):
-    """
-    Digitaliza la firma removiendo el fondo
-    Maneja cuadernos con líneas y diferentes iluminaciones
+    - Firmas en cualquier tipo de papel (blanco, cuadriculado, rayado)
+    - Firmas con cualquier color de tinta
     """
     try:
         # Leer imagen
@@ -475,32 +223,152 @@ def digitalizar_firma(image_path, output_path):
                 pil_img = Image.open(image_path)
                 img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
             except:
-                return False, "No se pudo leer la imagen"
+                return False, 0, "No se pudo leer la imagen"
         
-        # Convertir a escala de grises
+        # Verificar tamaño mínimo
+        height, width = img.shape[:2]
+        if height < 50 or width < 50:
+            return False, 0, "Imagen muy pequeña"
+        
+        # === VERIFICACIÓN 1: NO PERMITIR FONDO AMARILLENTO (cédula) ===
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        
+        # Rango amarillo/beige (típico de cédulas)
+        lower_yellow = np.array([15, 30, 100])
+        upper_yellow = np.array([35, 180, 255])
+        
+        mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
+        porcentaje_amarillo = (np.sum(mask_yellow > 0) / mask_yellow.size) * 100
+        
+        if porcentaje_amarillo > 15:
+            return False, 0, "❌ NO es válido usar la firma de la cédula. Debe firmar en papel blanco"
+        
+        # === VERIFICACIÓN 2: Detectar trazos manuscritos ===
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         
         # Mejorar contraste
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
         enhanced = clahe.apply(gray)
         
-        # Encontrar mejor umbral
-        mejor_thresh = None
-        mejor_porcentaje = 0
+        # Binarizar (invertido para tener trazos en blanco)
+        _, thresh = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
         
-        for umbral in [140, 160, 180]:
-            _, thresh_temp = cv2.threshold(enhanced, umbral, 255, cv2.THRESH_BINARY_INV)
-            pixeles = np.sum(thresh_temp > 0)
-            porcentaje = (pixeles / thresh_temp.size) * 100
-            
-            if 1 <= porcentaje <= 35:
-                if abs(porcentaje - 10) < abs(mejor_porcentaje - 10):
-                    mejor_porcentaje = porcentaje
-                    mejor_thresh = thresh_temp
+        # Limpiar ruido pequeño
+        kernel = np.ones((2,2), np.uint8)
+        thresh_clean = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=1)
         
-        if mejor_thresh is None:
-            mejor_thresh = cv2.adaptiveThreshold(enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-                                                 cv2.THRESH_BINARY_INV, 11, 2)
+        # Buscar contornos de trazos
+        contours, _ = cv2.findContours(thresh_clean, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        if len(contours) == 0:
+            return False, 0, "No se detecta firma en la imagen"
+        
+        # === VERIFICACIÓN 3: Analizar características de trazos ===
+        areas = [cv2.contourArea(c) for c in contours if cv2.contourArea(c) > 10]
+        
+        if not areas:
+            return False, 0, "No se detectan trazos de firma"
+        
+        # Los trazos manuscritos tienen variación en grosor
+        area_total = sum(areas)
+        area_promedio = np.mean(areas)
+        desviacion = np.std(areas)
+        
+        # Firmas manuscritas tienen buena variación de trazo
+        coeficiente_variacion = desviacion / area_promedio if area_promedio > 0 else 0
+        
+        # === VERIFICACIÓN 4: Calcular nitidez ===
+        nitidez = calcular_nitidez_firma(gray)
+        
+        # === VERIFICACIÓN 5: NO permitir fondos digitales perfectos ===
+        # Calcular variación de color en el fondo
+        hsv_std = np.std(hsv, axis=(0,1))
+        variacion_fondo = np.mean(hsv_std)
+        
+        # Fondos digitales tienen variación casi cero
+        if variacion_fondo < 5 and porcentaje_amarillo < 1:
+            # Verificar si es fondo blanco perfecto
+            gray_mean = np.mean(gray)
+            if gray_mean > 240:
+                return False, 0, "❌ Imagen digital detectada. Debe firmar en papel físico"
+        
+        # === DECISIÓN FINAL ===
+        confianza = 50  # Base
+        
+        # Aumentar confianza si:
+        if nitidez > 30:
+            confianza += 20  # Firma nítida
+        
+        if coeficiente_variacion > 0.3:
+            confianza += 20  # Trazos con variación natural
+        
+        if area_total > 500:
+            confianza += 10  # Firma visible
+        
+        # Verificar que NO sea imagen digital de cédula
+        if porcentaje_amarillo < 10 and variacion_fondo > 8:
+            confianza += 20  # Firma en papel real
+        
+        if confianza >= 60:
+            return True, confianza, f"✓ Firma manuscrita válida (confianza {confianza}%)"
+        else:
+            return False, confianza, f"Firma no clara. Intente con mejor iluminación y contraste"
+        
+    except Exception as e:
+        return False, 0, f"Error: {str(e)}"
+
+
+def digitalizar_firma(image_path, output_path):
+    """
+    Digitaliza una firma manuscrita:
+    1. Elimina el fondo (lo hace transparente)
+    2. Convierte los trazos a negro puro
+    3. Limpia ruido y líneas de cuaderno
+    4. Produce PNG con transparencia
+    
+    MEJORADO: Maneja papel blanco, cuadriculado, rayado, con sombras, etc.
+    """
+    try:
+        # Leer imagen
+        img = cv2.imread(image_path)
+        if img is None:
+            return False, "No se pudo leer la imagen"
+        
+        # Convertir a escala de grises
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        
+        # === PASO 1: Mejorar contraste ===
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        enhanced = clahe.apply(gray)
+        
+        # === PASO 2: Probar múltiples métodos de umbralización ===
+        # Método 1: Otsu automático
+        _, thresh1 = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        
+        # Método 2: Umbral adaptativo (mejor para iluminación irregular)
+        thresh2 = cv2.adaptiveThreshold(enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                        cv2.THRESH_BINARY_INV, 15, 10)
+        
+        # Método 3: Umbral fijo conservador
+        _, thresh3 = cv2.threshold(enhanced, 150, 255, cv2.THRESH_BINARY_INV)
+        
+        # Combinar los mejores resultados
+        thresh_combined = cv2.bitwise_or(thresh1, thresh2)
+        thresh_combined = cv2.bitwise_or(thresh_combined, thresh3)
+        
+        # === PASO 3: Seleccionar el mejor resultado ===
+        # Contar píxeles de trazo en cada versión
+        count1 = np.sum(thresh1 > 0)
+        count2 = np.sum(thresh2 > 0)
+        count3 = np.sum(thresh_combined > 0)
+        
+        # Elegir el que tenga más información pero no demasiado ruido
+        if count1 > count2 * 0.3 and count1 < count2 * 3:
+            mejor_thresh = thresh1
+        elif count3 < count2 * 2:
+            mejor_thresh = thresh_combined
+        else:
+            mejor_thresh = thresh2
         
         # Limpiar ruido
         kernel = np.ones((2,2), np.uint8)
@@ -543,12 +411,34 @@ def digitalizar_firma(image_path, output_path):
             img_rgba[mask, 0:3] = [0, 0, 0]
             
             cv2.imwrite(output_path, img_rgba)
+            recortar_firma_png(output_path)
             return True, "Firma digitalizada (versión simple)"
         except:
             return False, f"Error: {str(e)}"
 
 
+def recortar_firma_png(path_png):
+    img = cv2.imread(path_png, cv2.IMREAD_UNCHANGED)  # RGBA
+
+    if img is None or img.shape[2] < 4:
+        return False
+
+    alpha = img[:, :, 3]
+    coords = cv2.findNonZero(alpha)
+
+    if coords is None:
+        return False
+
+    x, y, w, h = cv2.boundingRect(coords)
+    recortada = img[y:y+h, x:x+w]
+
+    cv2.imwrite(path_png, recortada)
+    return True
+
+
+
 def guardar_archivo(file, folder, prefix=''):
+
     """
     Guarda un archivo de forma segura
     """
@@ -565,3 +455,301 @@ def guardar_archivo(file, folder, prefix=''):
     except Exception as e:
         print(f"Error al guardar archivo: {str(e)}")
         return None
+    
+
+
+def formatear_fecha_contrato(fecha_obj):
+    """
+    Formatea una fecha en múltiples formatos para usar en el PDF
+    
+    Args:
+        fecha_obj: objeto datetime o string en formato 'YYYY-MM-DD'
+    
+    Returns:
+        dict con diferentes formatos:
+        - 'mes_anio_espaciado': "01          26" (mes espaciado año)
+        - 'mes_anio_guion': "01-2026" (mes-año)
+        - 'fecha_completa_slash': "27/01/2026" (día/mes/año)
+        - 'mes_nombre': "Enero"
+        - 'dia': "27"
+        - 'mes_numero': "01"
+        - 'anio': "2026"
+    """
+    try:
+        # Convertir a datetime si es string
+        if isinstance(fecha_obj, str):
+            fecha_obj = datetime.strptime(fecha_obj, '%Y-%m-%d')
+        
+        # Diccionario de meses en español
+        meses_es = {
+            1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+            5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+            9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+        }
+        
+        # Extraer componentes
+        dia = fecha_obj.day
+        mes = fecha_obj.month
+        anio = fecha_obj.year
+        
+        # Formatear diferentes versiones
+        formatos = {
+            'mes_anio_espaciado': f"{mes:02d}          {anio % 100:02d}",  # "01          26"
+            'mes_anio_guion': f"{mes:02d}-{anio}",  # "01-2026"
+            'fecha_completa_slash': f"{dia:02d}/{mes:02d}/{anio}",  # "27/01/2026"
+            'mes_nombre': meses_es[mes],  # "Enero"
+            'dia': f"{dia:02d}",  # "27"
+            'mes_numero': f"{mes:02d}",  # "01"
+            'anio': str(anio),  # "2026"
+            'anio_corto': f"{anio % 100:02d}",  # "26"
+        }
+        
+        return formatos
+        
+    except Exception as e:
+        # Retornar valores por defecto en caso de error
+        return {
+            'mes_anio_espaciado': '',
+            'mes_anio_guion': '',
+            'fecha_completa_slash': '',
+            'mes_nombre': '',
+            'dia': '',
+            'mes_numero': '',
+            'anio': '',
+            'anio_corto': ''
+        }
+
+
+def generar_contrato_word_pdf(datos_contrato, plantilla_path, output_folder, 
+                              tamanio_firma_pulgadas=1.5):
+    """
+    Genera un contrato PDF a partir de una plantilla Word RESPETANDO TOTALMENTE EL DISEÑO ORIGINAL
+    
+    VALIDACIÓN CRÍTICA: No permite generar contrato sin firma digitalizada
+    
+    Parámetros:
+    - datos_contrato: diccionario con los datos del cliente
+    - plantilla_path: ruta de la plantilla Word
+    - output_folder: carpeta donde se guardará el PDF
+    - tamanio_firma_pulgadas: tamaño de la firma en pulgadas (default: 1.5)
+    
+    Retorna: (exito, mensaje, ruta_pdf)
+    """
+    try:
+        # ============================================================
+        # VALIDACIÓN CRÍTICA: FIRMA DIGITALIZADA OBLIGATORIA
+        # ============================================================
+        if not datos_contrato.get('firma_digitalizada_path'):
+            return False, "❌ ERROR CRÍTICO: No se puede generar contrato sin firma digitalizada", None
+        
+        firma_path = datos_contrato.get('firma_digitalizada_path')
+        
+        if not os.path.exists(firma_path):
+            return False, "❌ ERROR CRÍTICO: El archivo de firma digitalizada no existe", None
+        
+        # Verificar que el archivo no esté vacío o corrupto
+        try:
+            firma_size = os.path.getsize(firma_path)
+            if firma_size < 100:  # Menos de 100 bytes es sospechoso
+                return False, "❌ ERROR CRÍTICO: El archivo de firma es demasiado pequeño o está corrupto", None
+        except:
+            return False, "❌ ERROR CRÍTICO: No se puede acceder al archivo de firma", None
+        
+        # ============================================================
+        # CARGAR PLANTILLA (SIN MODIFICAR NADA DEL DISEÑO)
+        # ============================================================
+        doc = DocxTemplate(plantilla_path)
+        
+        # ============================================================
+        # FORMATEAR FECHAS EN MÚLTIPLES FORMATOS
+        # ============================================================
+        fecha_contrato_obj = datos_contrato.get('fecha_contrato')
+        formatos_fecha = formatear_fecha_contrato(fecha_contrato_obj)
+        
+        # ============================================================
+        # DETERMINAR TIPO DE CONTRATO (RESIDENCIAL O CORPORATIVO)
+        # ============================================================
+        tipo_contrato = datos_contrato.get('tipo_contrato', '').upper()
+        
+        # Variables para marcar con X según el tipo
+        es_residencial = 'X' if tipo_contrato == 'RESIDENCIAL' else ''
+        es_corporativo = 'X' if tipo_contrato == 'CORPORATIVO' else ''
+        
+        # ============================================================
+        # PREPARAR CONTEXTO CON TODOS LOS DATOS
+        # ============================================================
+        context = {
+            # Datos básicos del cliente
+            'nombre_cliente': datos_contrato.get('nombre_cliente', ''),
+            'numero_documento': datos_contrato.get('numero_documento', ''),
+            'correo_electronico': datos_contrato.get('correo_electronico', 'N/A'),
+            'telefono_contacto1': datos_contrato.get('telefono_contacto1', ''),
+            'telefono_contacto2': datos_contrato.get('telefono_contacto2', 'N/A'),
+            'barrio': datos_contrato.get('barrio', ''),
+            'departamento': datos_contrato.get('departamento', ''),
+            'municipio': datos_contrato.get('municipio', ''),
+            'direccion': datos_contrato.get('direccion', ''),
+            'plan': datos_contrato.get('plan', ''),
+            
+            # Tipo de contrato con X
+            'tipo_contrato': datos_contrato.get('tipo_contrato', ''),
+            'marca_residencial': es_residencial,
+            'marca_corporativo': es_corporativo,
+            
+            # Fechas en diferentes formatos
+            'fecha_mes_anio_espaciado': formatos_fecha['mes_anio_espaciado'],  # "01          26"
+            'fecha_mes_anio_guion': formatos_fecha['mes_anio_guion'],  # "01-2026"
+            'fecha_completa': formatos_fecha['fecha_completa_slash'],  # "27/01/2026"
+            'fecha_mes_nombre': formatos_fecha['mes_nombre'],  # "Enero"
+            'fecha_dia': formatos_fecha['dia'],  # "27"
+            'fecha_mes': formatos_fecha['mes_numero'],  # "01"
+            'fecha_anio': formatos_fecha['anio'],  # "2026"
+            'fecha_anio_corto': formatos_fecha['anio_corto'],  # "26"
+            
+            # Fecha original (por compatibilidad)
+            'fecha_contrato': datos_contrato.get('fecha_contrato', ''),
+            
+            # Datos del asesor
+            'asesor_nombre': datos_contrato.get('asesor_nombre', ''),
+            
+            # Fecha y hora de generación
+            'fecha_generacion': datetime.now().strftime('%d/%m/%Y'),
+            'hora_generacion': datetime.now().strftime('%H:%M:%S'),
+        }
+        
+        # ============================================================
+        # INSERTAR FIRMA DIGITALIZADA (YA VALIDADA)
+        # La firma se inserta como InlineImage para NO afectar el diseño
+        # ============================================================
+        from docxtpl import InlineImage
+        from docx.shared import Inches
+        
+
+        
+        try:
+            # Puedes ajustar el tamaño aquí si es necesario
+            # tamanio_firma_pulgadas se puede pasar como parámetro
+            firma_img = InlineImage(doc, firma_path, width=Inches(tamanio_firma_pulgadas))
+            context['firma_cliente'] = firma_img
+        except Exception as e:
+            return False, f"❌ ERROR al cargar imagen de firma: {str(e)}", None
+        
+        # ============================================================
+        # RENDERIZAR DOCUMENTO (SOLO RELLENA VARIABLES, NO CAMBIA DISEÑO)
+        # ============================================================
+        doc.render(context)
+        
+        # ============================================================
+        # GUARDAR WORD TEMPORAL
+        # ============================================================
+        numero_doc = datos_contrato.get('numero_documento', 'sin_documento')
+        temp_docx = os.path.join(output_folder, f"{numero_doc}_temp.docx")
+        
+        # Guardar preservando TOTALMENTE el formato original
+        doc.save(temp_docx)
+        
+        # ============================================================
+        # CONVERTIR A PDF PRESERVANDO EL DISEÑO
+        # ============================================================
+        output_pdf = os.path.join(output_folder, f"{numero_doc}.pdf")
+        
+        exito_conversion = convertir_word_a_pdf(temp_docx, output_pdf)
+        
+        if not exito_conversion:
+            # Limpiar archivo temporal
+            try:
+                os.remove(temp_docx)
+            except:
+                pass
+            return False, "Error al convertir a PDF. Verifique que Microsoft Word o LibreOffice estén instalados", None
+        
+        # ============================================================
+        # LIMPIAR ARCHIVO TEMPORAL
+        # ============================================================
+        try:
+            os.remove(temp_docx)
+        except:
+            pass
+        
+        return True, "✅ Contrato generado exitosamente con firma digitalizada", output_pdf
+        
+    except Exception as e:
+        return False, f"❌ Error al generar contrato: {str(e)}", None
+
+
+def convertir_word_a_pdf(docx_path, pdf_path):
+    """
+    Convierte un archivo Word a PDF PRESERVANDO TOTALMENTE EL DISEÑO ORIGINAL
+    Soporta Windows (Word) y Linux/Mac (LibreOffice)
+    
+    IMPORTANTE: Esta función respeta:
+    - Tamaños de página personalizados
+    - Imágenes y gráficos
+    - Márgenes
+    - Formatos de texto
+    - Tablas y diseños complejos
+    
+    Retorna: True si tuvo éxito, False si falló
+    """
+    try:
+        sistema = platform.system()
+        
+        if sistema == "Windows":
+            # Usar docx2pdf (requiere Microsoft Word instalado)
+            # Word es el MEJOR para preservar diseño
+            try:
+                convert(docx_path, pdf_path)
+                return True
+            except Exception as e:
+                print(f"Error con docx2pdf: {e}")
+                # Intentar con LibreOffice como fallback
+                return convertir_con_libreoffice(docx_path, pdf_path)
+        
+        else:
+            # Linux/Mac: usar LibreOffice
+            return convertir_con_libreoffice(docx_path, pdf_path)
+            
+    except Exception as e:
+        print(f"Error en conversión a PDF: {e}")
+        return False
+
+
+def convertir_con_libreoffice(docx_path, pdf_path):
+    """
+    Convierte usando LibreOffice en línea de comandos
+    LibreOffice también respeta el diseño original del documento
+    """
+    try:
+        # Obtener carpeta de salida
+        output_folder = os.path.dirname(pdf_path)
+        
+        # Comando de LibreOffice con opciones para preservar formato
+        comando = [
+            'soffice',  # o 'libreoffice' en algunos sistemas
+            '--headless',
+            '--convert-to',
+            'pdf',
+            '--outdir',
+            output_folder,
+            docx_path
+        ]
+        
+        # Ejecutar conversión
+        resultado = subprocess.run(comando, capture_output=True, text=True, timeout=30)
+        
+        if resultado.returncode == 0:
+            # LibreOffice genera el PDF con el mismo nombre base
+            nombre_base = os.path.splitext(os.path.basename(docx_path))[0]
+            pdf_generado = os.path.join(output_folder, f"{nombre_base}.pdf")
+            
+            # Renombrar si es necesario
+            if pdf_generado != pdf_path and os.path.exists(pdf_generado):
+                os.rename(pdf_generado, pdf_path)
+            
+            return os.path.exists(pdf_path)
+        
+        return False
+        
+    except Exception as e:
+        print(f"Error con LibreOffice: {e}")
+        return False

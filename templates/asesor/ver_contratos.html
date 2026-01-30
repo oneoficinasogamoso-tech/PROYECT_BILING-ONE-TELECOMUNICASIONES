@@ -583,6 +583,65 @@
                 font-size: 22px;
             }
         }
+
+        /* Botón de descarga */
+        .btn-download {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 8px 14px;
+          background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+          color: var(--white);
+          border-radius: 8px;
+          text-decoration: none;
+          transition: all 0.3s;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          box-shadow: var(--shadow-sm);
+          white-space: nowrap;
+        }
+
+        .btn-download:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 12px rgba(21, 101, 192, 0.3);
+        }
+
+        .btn-download:active {
+          transform: translateY(0);
+        }
+
+        .btn-download svg {
+          width: 16px;
+          height: 16px;
+          flex-shrink: 0;
+        }
+
+        /* Responsive para botón */
+        @media (max-width: 768px) {
+          .btn-download {
+            padding: 6px 10px;
+            font-size: 12px;
+          }
+
+          .btn-download svg {
+            width: 14px;
+            height: 14px;
+          }
+        }
+
+        /* Ajustar ancho de columna de acciones */
+        thead th:last-child {
+          text-align: center;
+          width: 100px;
+        }
+
+        tbody td:last-child {
+          text-align: center;
+        }
+
+        
     </style>
 </head>
 <body>
@@ -782,6 +841,7 @@
                         <th>Tipo</th>
                         <th>Fecha</th>
                         <th>Estado</th>
+                        <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -793,7 +853,7 @@
                         <td>{{ contrato.barrio }}, {{ contrato.municipio }}</td>
                         <td>{{ contrato.plan }}</td>
                         <td>
-                            <span class="badge badge-{{ contrato.tipo_contrato.lower() }}">
+                           <span class="badge badge-{{ contrato.tipo_contrato.lower() }}">
                                 {{ contrato.tipo_contrato }}
                             </span>
                         </td>
@@ -808,6 +868,18 @@
                             {% elif contrato.estado == 'INSTALADO' %}
                                 <span class="badge badge-instalado">Instalado</span>
                             {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('asesor.generar_contrato', contrato_id=contrato.id) }}" 
+                               class="btn-download" 
+                               title="Descargar Contrato PDF">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                                PDF
+                            </a>
                         </td>
                     </tr>
                     {% endfor %}

@@ -11,6 +11,9 @@ class Config:
     MYSQL_DB = 'bayhr8qklsiu6zqznnwh'
     MYSQL_PORT = 3306
 
+    PLANTILLAS_FOLDER = "plantillas"
+    CONTRATOS_GENERADOS_FOLDER = "contratos_generados"
+
     # Configuración de archivos
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
     CONTRATOS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'contratos_pdf')
