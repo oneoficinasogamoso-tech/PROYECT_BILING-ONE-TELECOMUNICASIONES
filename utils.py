@@ -371,7 +371,7 @@ def detectar_tipo_firma(img, gray):
     return 'blanca', None
 
 
-def digitalizar_firma_inteligente(image_path, output_path):
+def digitalizar_firma(image_path, output_path):
     """
     Digitalización con 3 modos optimizados:
     1. PAPEL BLANCO: procesamiento suave

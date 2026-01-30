@@ -234,7 +234,7 @@ def crear_contrato_post():
         
         # Verificar firma (SÚPER PERMISIVO)
         path_firma = os.path.join(folder_firma, filename_firma)
-        firma_valida, mensaje_firma = verificar_firma_manual(path_firma)
+        firma_valida, confianza_firma, mensaje_firma = verificar_firma_manual(path_firma)
         
         if not firma_valida:
             os.remove(path_frontal)
