@@ -15,11 +15,11 @@ pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tessera
 os.environ["TESSDATA_PREFIX"] = r"C:\Program Files\Tesseract-OCR\tessdata"
 
 
-def calcular_nitidez_firma(gray_image):
-    """Calcula la nitidez usando Laplacian"""
-    laplacian = cv2.Laplacian(gray_image, cv2.CV_64F)
-    return laplacian.var()
-
+def calcular_nitidez_firma(gray):
+    """Calcula la nitidez usando Laplaciano"""
+    laplacian = cv2.Laplacian(gray, cv2.CV_64F)
+    nitidez = laplacian.var()
+    return nitidez
 
 
 def allowed_file(filename):
@@ -207,7 +207,7 @@ def verificar_firma_manual(image_path):
     
     RECHAZA:
     - Fondo amarillento (cédula)
-    - Imágenes digitales con fondo blanco perfecto
+    - Imágenes digitales (Word/PDF) con fondo blanco perfecto
     - Gráficos/logos digitales
     
     ACEPTA:
@@ -280,7 +280,16 @@ def verificar_firma_manual(image_path):
         # === VERIFICACIÓN 4: Calcular nitidez ===
         nitidez = calcular_nitidez_firma(gray)
         
-        # === VERIFICACIÓN 5: NO permitir fondos digitales perfectos ===
+        # === VERIFICACIÓN 5: NO permitir fondos digitales perfectos (Word/PDF) ===
+        # Fotos reales NUNCA tienen 85%+ de píxeles en blanco puro (255)
+        # Word/PDF sí tienen fondo blanco perfecto
+        pixeles_blanco_puro = np.sum(gray == 255)
+        porcentaje_blanco_puro = (pixeles_blanco_puro / gray.size) * 100
+        
+        if porcentaje_blanco_puro > 85:
+            return False, 0, "❌ Imagen digital detectada (Word/PDF). Debe firmar en papel físico y tomar foto"
+        
+        # === VERIFICACIÓN 6: NO permitir fondos digitales con variación mínima ===
         # Calcular variación de color en el fondo
         hsv_std = np.std(hsv, axis=(0,1))
         variacion_fondo = np.mean(hsv_std)
@@ -316,7 +325,6 @@ def verificar_firma_manual(image_path):
         
     except Exception as e:
         return False, 0, f"Error: {str(e)}"
-
 
 def detectar_tipo_firma(img, gray):
     """
