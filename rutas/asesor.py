@@ -103,6 +103,23 @@ def crear_contrato_post():
             'fecha_contrato': request.form.get('fecha_contrato')
         }
         
+        # ========== OBTENER PRECIO DEL PLAN SELECCIONADO ==========
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Buscar el precio del plan seleccionado
+        cursor.execute("SELECT precio FROM planes WHERE nombre_plan = %s", (datos['plan'],))
+        plan_info = cursor.fetchone()
+        
+        if not plan_info:
+            cursor.close()
+            conn.close()
+            flash('Error: Plan no encontrado en la base de datos', 'error')
+            return redirect(url_for('asesor.crear_contrato'))
+        
+        precio_plan = plan_info['precio']
+        # ========== FIN OBTENCIÓN PRECIO ==========
+        
         # Validar campos requeridos
         campos_requeridos = ['nombre_cliente', 'numero_documento', 'telefono_contacto1', 
                             'barrio', 'departamento', 'municipio', 'direccion', 
@@ -110,11 +127,15 @@ def crear_contrato_post():
         
         for campo in campos_requeridos:
             if not datos.get(campo):
+                cursor.close()
+                conn.close()
                 flash(f'El campo {campo.replace("_", " ")} es requerido', 'error')
                 return redirect(url_for('asesor.crear_contrato'))
         
         # Validar archivos
         if 'foto_cc_frontal' not in request.files or 'foto_cc_trasera' not in request.files or 'foto_firma' not in request.files or 'foto_recibo' not in request.files:
+            cursor.close()
+            conn.close()
             flash('Debe subir todas las fotos requeridas (CC frontal, CC trasera, Firma y Recibo)', 'error')
             return redirect(url_for('asesor.crear_contrato'))
         
@@ -124,6 +145,8 @@ def crear_contrato_post():
         foto_recibo = request.files['foto_recibo']
         
         if not foto_cc_frontal.filename or not foto_cc_trasera.filename or not foto_firma.filename or not foto_recibo.filename:
+            cursor.close()
+            conn.close()
             flash('Debe subir todas las fotos requeridas', 'error')
             return redirect(url_for('asesor.crear_contrato'))
         
@@ -132,6 +155,8 @@ def crear_contrato_post():
         filename_frontal = guardar_archivo(foto_cc_frontal, folder_frontal, 'cc_frontal')
         
         if not filename_frontal:
+            cursor.close()
+            conn.close()
             flash('Error al guardar foto de CC frontal. Formato no válido (solo JPG, JPEG o PNG)', 'error')
             return redirect(url_for('asesor.crear_contrato'))
         
@@ -141,6 +166,8 @@ def crear_contrato_post():
         
         if not es_valido:
             os.remove(path_frontal)
+            cursor.close()
+            conn.close()
             flash(f'Cédula frontal rechazada: {mensaje}', 'error')
             return redirect(url_for('asesor.crear_contrato'))
         
@@ -150,6 +177,8 @@ def crear_contrato_post():
         
         if not filename_trasera:
             os.remove(path_frontal)
+            cursor.close()
+            conn.close()
             flash('Error al guardar foto de CC trasera. Formato no válido (solo JPG, JPEG o PNG)', 'error')
             return redirect(url_for('asesor.crear_contrato'))
         
@@ -160,6 +189,8 @@ def crear_contrato_post():
         if not es_valido_trasera:
             os.remove(path_frontal)
             os.remove(path_trasera)
+            cursor.close()
+            conn.close()
             flash(f'Cédula trasera rechazada: {mensaje_trasera}', 'error')
             return redirect(url_for('asesor.crear_contrato'))
         
@@ -170,6 +201,8 @@ def crear_contrato_post():
         if not filename_recibo:
             os.remove(path_frontal)
             os.remove(path_trasera)
+            cursor.close()
+            conn.close()
             flash('Error al guardar foto de recibo. Formato no válido (solo JPG, JPEG o PNG)', 'error')
             return redirect(url_for('asesor.crear_contrato'))
         
@@ -181,6 +214,8 @@ def crear_contrato_post():
             os.remove(path_frontal)
             os.remove(path_trasera)
             os.remove(path_recibo)
+            cursor.close()
+            conn.close()
             flash(f'Recibo rechazado: {mensaje_recibo}', 'error')
             return redirect(url_for('asesor.crear_contrato'))
         
@@ -192,125 +227,100 @@ def crear_contrato_post():
             os.remove(path_frontal)
             os.remove(path_trasera)
             os.remove(path_recibo)
+            cursor.close()
+            conn.close()
             flash('Error al guardar foto de firma. Formato no válido (solo JPG, JPEG o PNG)', 'error')
             return redirect(url_for('asesor.crear_contrato'))
         
-        # Verificar firma manuscrita
+        # Verificar firma (SÚPER PERMISIVO)
         path_firma = os.path.join(folder_firma, filename_firma)
-        firma_valida, confianza_firma, mensaje_firma = verificar_firma_manual(path_firma)
+        firma_valida, mensaje_firma = verificar_firma_manual(path_firma)
         
         if not firma_valida:
             os.remove(path_frontal)
             os.remove(path_trasera)
             os.remove(path_recibo)
             os.remove(path_firma)
+            cursor.close()
+            conn.close()
             flash(f'Firma rechazada: {mensaje_firma}', 'error')
             return redirect(url_for('asesor.crear_contrato'))
         
-        # ========== DIGITALIZAR FIRMA (CRÍTICO) ==========
-        folder_digitalizada = os.path.join(Config.UPLOAD_FOLDER, 'firmas_digitalizadas')
+        # ========== DIGITALIZAR FIRMA (REMOVER FONDO) ==========
+        folder_digitalizadas = os.path.join(Config.UPLOAD_FOLDER, 'firmas_digitalizadas')
+        os.makedirs(folder_digitalizadas, exist_ok=True)
         
-        # Crear carpeta si no existe
-        if not os.path.exists(folder_digitalizada):
-            os.makedirs(folder_digitalizada)
+        # Generar nombre para firma digitalizada
+        base_name = os.path.splitext(filename_firma)[0]
+        filename_digitalizada = f"{base_name}_digital.png"
+        path_digitalizada = os.path.join(folder_digitalizadas, filename_digitalizada)
         
-        # Nombre de archivo para firma digitalizada
-        name, _ = os.path.splitext(filename_firma)
-        filename_digitalizada = f"{name}_digital.png"
-        path_digitalizada = os.path.join(folder_digitalizada, filename_digitalizada)
+        # Digitalizar (remover fondo blanco/líneas de cuaderno)
+        exito_digitalizacion = digitalizar_firma(path_firma, path_digitalizada)
         
-        # Digitalizar
-        exito_digitalizacion, mensaje_digitalizacion = digitalizar_firma(path_firma, path_digitalizada)
-        
-        # ============================================================
-        # VALIDACIÓN CRÍTICA: NO PERMITIR REGISTRO SIN FIRMA DIGITALIZADA
-        # ============================================================
         if not exito_digitalizacion:
-            # Limpiar todos los archivos
             os.remove(path_frontal)
             os.remove(path_trasera)
             os.remove(path_recibo)
             os.remove(path_firma)
-            flash(f'❌ ERROR CRÍTICO: No se pudo digitalizar la firma. {mensaje_digitalizacion}. No se puede registrar el cliente sin firma válida.', 'error')
+            cursor.close()
+            conn.close()
+            flash('Error al procesar la firma. Por favor intente con otra foto', 'error')
             return redirect(url_for('asesor.crear_contrato'))
         
-        # Verificar que el archivo digitalizado existe y no está vacío
-        if not os.path.exists(path_digitalizada):
-            # Limpiar todos los archivos
-            os.remove(path_frontal)
-            os.remove(path_trasera)
-            os.remove(path_recibo)
-            os.remove(path_firma)
-            flash('❌ ERROR CRÍTICO: La firma digitalizada no se generó correctamente. No se puede registrar el cliente.', 'error')
-            return redirect(url_for('asesor.crear_contrato'))
-        
-        # Verificar tamaño del archivo digitalizado
+        # ========== GUARDAR EN BASE DE DATOS CON EL PRECIO ==========
         try:
-            tamanio_firma = os.path.getsize(path_digitalizada)
-            if tamanio_firma < 100:  # Menos de 100 bytes es sospechoso
-                # Limpiar todos los archivos
-                os.remove(path_frontal)
-                os.remove(path_trasera)
-                os.remove(path_recibo)
-                os.remove(path_firma)
-                os.remove(path_digitalizada)
-                flash('❌ ERROR CRÍTICO: El archivo de firma digitalizada está corrupto o vacío. No se puede registrar el cliente.', 'error')
-                return redirect(url_for('asesor.crear_contrato'))
-        except:
-            # Limpiar todos los archivos
+            query = """
+            INSERT INTO contratos 
+            (asesor_id, nombre_cliente, numero_documento, correo_electronico, 
+            telefono_contacto1, telefono_contacto2, barrio, departamento, 
+            municipio, direccion, plan, precio, tipo_contrato, fecha_contrato, 
+            foto_cc_frontal, foto_cc_trasera, foto_firma, foto_recibo, firma_digitalizada)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            
+            valores = (
+                session.get('user_id'),
+                datos['nombre_cliente'],
+                datos['numero_documento'],
+                datos['correo_electronico'],
+                datos['telefono_contacto1'],
+                datos['telefono_contacto2'],
+                datos['barrio'],
+                datos['departamento'],
+                datos['municipio'],
+                datos['direccion'],
+                datos['plan'],
+                precio_plan,  # ← AQUÍ SE GUARDA EL PRECIO
+                datos['tipo_contrato'],
+                datos['fecha_contrato'],
+                filename_frontal,
+                filename_trasera,
+                filename_firma,
+                filename_recibo,
+                filename_digitalizada
+            )
+            
+            cursor.execute(query, valores)
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
+            flash('✅ Contrato creado exitosamente con firma digitalizada', 'success')
+            return redirect(url_for('asesor.ver_contratos'))
+            
+        except Exception as e:
+            # Limpiar archivos si falla la BD
             os.remove(path_frontal)
             os.remove(path_trasera)
             os.remove(path_recibo)
             os.remove(path_firma)
-            if os.path.exists(path_digitalizada):
-                os.remove(path_digitalizada)
-            flash('❌ ERROR CRÍTICO: No se pudo verificar la firma digitalizada. No se puede registrar el cliente.', 'error')
-            return redirect(url_for('asesor.crear_contrato'))
+            os.remove(path_digitalizada)
+            cursor.close()
+            conn.close()
+            raise e
         
-        # ============================================================
-        # SI LLEGAMOS AQUÍ, TODO ESTÁ VALIDADO Y LA FIRMA ESTÁ DIGITALIZADA
-        # ============================================================
-        
-        # ========== INSERTAR EN BASE DE DATOS ==========
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        query = """
-        INSERT INTO contratos 
-        (asesor_id, nombre_cliente, numero_documento, correo_electronico, 
-         telefono_contacto1, telefono_contacto2, barrio, departamento, 
-         municipio, direccion, plan, tipo_contrato, fecha_contrato, 
-         estado, foto_cc_frontal, foto_cc_trasera, foto_firma, foto_recibo, firma_digitalizada)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'POR_REVISAR', %s, %s, %s, %s, %s)
-        """
-        
-        valores = (
-            session.get('user_id'),
-            datos['nombre_cliente'],
-            datos['numero_documento'],
-            datos['correo_electronico'],
-            datos['telefono_contacto1'],
-            datos['telefono_contacto2'],
-            datos['barrio'],
-            datos['departamento'],
-            datos['municipio'],
-            datos['direccion'],
-            datos['plan'],
-            datos['tipo_contrato'],
-            datos['fecha_contrato'],
-            filename_frontal,
-            filename_trasera,
-            filename_firma,
-            filename_recibo,
-            filename_digitalizada
-        )
-        
-        cursor.execute(query, valores)
-        conn.commit()
-        cursor.close()
-        conn.close()
-        
-        flash('✅ ¡Contrato creado exitosamente con firma digitalizada! Estado: Por Revisar', 'success')
+        flash('✅ Contrato creado exitosamente', 'success')
         return redirect(url_for('asesor.ver_contratos'))
         
     except mysql.connector.IntegrityError:
@@ -449,7 +459,7 @@ def generar_contrato(contrato_id):
             flash('❌ ERROR: El archivo de firma digitalizada no existe. No se puede generar el PDF.', 'error')
             return redirect(url_for('asesor.ver_contratos'))
         
-        # Preparar datos para el contrato
+        # Preparar datos para el contrato INCLUYENDO EL PRECIO
         datos_contrato = {
             'nombre_cliente': contrato['nombre_cliente'],
             'numero_documento': contrato['numero_documento'],
@@ -461,17 +471,26 @@ def generar_contrato(contrato_id):
             'municipio': contrato['municipio'],
             'direccion': contrato['direccion'],
             'plan': contrato['plan'],
+            'precio': contrato['precio'],  # ← AGREGAR EL PRECIO
             'tipo_contrato': contrato['tipo_contrato'],
             'fecha_contrato': contrato['fecha_contrato'],  # Pasar el objeto datetime directamente
             'asesor_nombre': contrato['asesor_nombre'],
             'firma_digitalizada_path': firma_path  # Ruta completa de la firma
         }
         
-        # Ruta de la plantilla para asesor
-        plantilla_path = os.path.join(Config.PLANTILLAS_FOLDER, 'plantilla_contrato_asesor.docx')
+        # ============================================================
+        # SELECCIONAR PLANTILLA SEGÚN EL PLAN
+        # Si es "Solo TV" usa plantilla diferente (precio cápsula diferente)
+        # ============================================================
+        if contrato['plan'] == 'Solo TV':
+            plantilla_nombre = 'plantilla_contrato_solo_tv.docx'
+        else:
+            plantilla_nombre = 'plantilla_contrato_asesor.docx'
+        
+        plantilla_path = os.path.join(Config.PLANTILLAS_FOLDER, plantilla_nombre)
         
         if not os.path.exists(plantilla_path):
-            flash('Plantilla de contrato no encontrada. Coloque el archivo "plantilla_contrato_asesor.docx" en la carpeta plantillas/', 'error')
+            flash(f'Plantilla de contrato no encontrada. Coloque el archivo "{plantilla_nombre}" en la carpeta plantillas/', 'error')
             return redirect(url_for('asesor.ver_contratos'))
         
         # Generar el contrato PDF

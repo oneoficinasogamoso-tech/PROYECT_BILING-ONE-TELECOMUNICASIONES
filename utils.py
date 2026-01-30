@@ -318,123 +318,187 @@ def verificar_firma_manual(image_path):
         return False, 0, f"Error: {str(e)}"
 
 
-def digitalizar_firma(image_path, output_path):
+def detectar_tipo_firma(img, gray):
     """
-    Digitaliza una firma manuscrita:
-    1. Elimina el fondo (lo hace transparente)
-    2. Convierte los trazos a negro puro
-    3. Limpia ruido y líneas de cuaderno
-    4. Produce PNG con transparencia
+    Detecta el tipo de firma:
+    1. 'blanca' - papel blanco sin cuadrículas
+    2. 'color' - tinta de color (rojo/azul/verde)
+    3. 'cuadriculada' - papel cuadriculado con tinta negra
+    """
+    height, width = gray.shape
     
-    MEJORADO: Maneja papel blanco, cuadriculado, rayado, con sombras, etc.
+    # Convertir a HSV
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    
+    # Detectar píxeles oscuros (tinta)
+    _, mask_oscuros = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY_INV)
+    
+    if np.sum(mask_oscuros) < 100:
+        return 'blanca', None
+    
+    # Analizar color de la tinta
+    pixeles_tinta = img[mask_oscuros > 0]
+    
+    if len(pixeles_tinta) > 0:
+        mean_b = np.mean(pixeles_tinta[:, 0])
+        mean_g = np.mean(pixeles_tinta[:, 1])
+        mean_r = np.mean(pixeles_tinta[:, 2])
+        
+        pixeles_hsv = hsv[mask_oscuros > 0]
+        mean_sat = np.mean(pixeles_hsv[:, 1])
+        
+        # Si saturación alta = color
+        if mean_sat > 40:
+            if mean_r > mean_g + 20 and mean_r > mean_b + 20:
+                return 'color', 'rojo'
+            if mean_b > mean_r + 20 and mean_b > mean_g + 20:
+                return 'color', 'azul'
+            if mean_g > mean_r + 20 and mean_g > mean_b + 20:
+                return 'color', 'verde'
+    
+    # Detectar cuadrículas (muchas líneas)
+    edges = cv2.Canny(gray, 30, 100)
+    lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=20, minLineLength=25, maxLineGap=10)
+    
+    if lines is not None and len(lines) > 30:
+        # Analizar brillo del fondo
+        brillo_medio = np.mean(gray)
+        
+        if brillo_medio < 180:  # Fondo grisáceo = cuadriculada
+            return 'cuadriculada', None
+    
+    # Por defecto
+    return 'blanca', None
+
+
+def digitalizar_firma_inteligente(image_path, output_path):
+    """
+    Digitalización con 3 modos optimizados:
+    1. PAPEL BLANCO: procesamiento suave
+    2. TINTA COLOR: separación por canal
+    3. CUADRICULADA NEGRA: procesamiento agresivo anti-líneas
     """
     try:
         # Leer imagen
         img = cv2.imread(image_path)
         if img is None:
-            return False, "No se pudo leer la imagen"
+            try:
+                pil_img = Image.open(image_path)
+                img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+            except:
+                return False, "No se pudo leer"
         
-        # Convertir a escala de grises
+        height, width = img.shape[:2]
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         
-        # === PASO 1: Mejorar contraste ===
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-        enhanced = clahe.apply(gray)
+        # Detectar tipo
+        tipo, subtipo = detectar_tipo_firma(img, gray)
         
-        # === PASO 2: Probar múltiples métodos de umbralización ===
-        # Método 1: Otsu automático
-        _, thresh1 = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-        
-        # Método 2: Umbral adaptativo (mejor para iluminación irregular)
-        thresh2 = cv2.adaptiveThreshold(enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                        cv2.THRESH_BINARY_INV, 15, 10)
-        
-        # Método 3: Umbral fijo conservador
-        _, thresh3 = cv2.threshold(enhanced, 150, 255, cv2.THRESH_BINARY_INV)
-        
-        # Combinar los mejores resultados
-        thresh_combined = cv2.bitwise_or(thresh1, thresh2)
-        thresh_combined = cv2.bitwise_or(thresh_combined, thresh3)
-        
-        # === PASO 3: Seleccionar el mejor resultado ===
-        # Contar píxeles de trazo en cada versión
-        count1 = np.sum(thresh1 > 0)
-        count2 = np.sum(thresh2 > 0)
-        count3 = np.sum(thresh_combined > 0)
-        
-        # Elegir el que tenga más información pero no demasiado ruido
-        if count1 > count2 * 0.3 and count1 < count2 * 3:
-            mejor_thresh = thresh1
-        elif count3 < count2 * 2:
-            mejor_thresh = thresh_combined
+        if subtipo:
+            print(f"   🎨 Detectado: {tipo.upper()} - {subtipo.upper()}")
         else:
-            mejor_thresh = thresh2
+            print(f"   🎨 Detectado: {tipo.upper()}")
         
-        # Limpiar ruido
-        kernel = np.ones((2,2), np.uint8)
-        thresh_limpio = cv2.morphologyEx(mejor_thresh, cv2.MORPH_CLOSE, kernel, iterations=1)
-        thresh_limpio = cv2.morphologyEx(thresh_limpio, cv2.MORPH_OPEN, kernel, iterations=1)
+        # ========== MODO 1: PAPEL BLANCO ==========
+        if tipo == 'blanca':
+            print(f"   📄 Procesamiento SUAVE para papel blanco")
+            
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+            enhanced = clahe.apply(gray)
+            
+            # Umbralización suave
+            _, thresh1 = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+            thresh2 = cv2.adaptiveThreshold(enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                           cv2.THRESH_BINARY_INV, 15, 4)
+            
+            thresh_firma = cv2.bitwise_or(thresh1, thresh2)
+            
+            # Cerrar huecos
+            kernel = np.ones((2,2), np.uint8)
+            thresh_limpio = cv2.morphologyEx(thresh_firma, cv2.MORPH_CLOSE, kernel, iterations=1)
         
-        # Remover líneas de cuaderno
-        try:
-            kernel_horizontal = cv2.getStructuringElement(cv2.MORPH_RECT, (50, 1))
-            detected_lines = cv2.morphologyEx(thresh_limpio, cv2.MORPH_OPEN, kernel_horizontal, iterations=2)
-            thresh_final = cv2.subtract(thresh_limpio, detected_lines)
-        except:
-            thresh_final = thresh_limpio
+        # ========== MODO 2: TINTA DE COLOR ==========
+        elif tipo == 'color':
+            print(f"   🎨 Separación por CANAL DE COLOR")
+            
+            b, g, r = cv2.split(img)
+            
+            # Seleccionar canal
+            if subtipo == 'rojo':
+                canal_firma = cv2.bitwise_not(b)
+            elif subtipo == 'azul':
+                canal_firma = cv2.bitwise_not(r)
+            else:  # verde
+                canal_firma = cv2.bitwise_not(b)
+            
+            clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8,8))
+            canal_firma = clahe.apply(canal_firma)
+            
+            _, thresh_firma = cv2.threshold(canal_firma, 150, 255, cv2.THRESH_BINARY)
+            
+            # Remover líneas extra largas
+            kernel_h = cv2.getStructuringElement(cv2.MORPH_RECT, (100, 1))
+            lineas_h = cv2.morphologyEx(thresh_firma, cv2.MORPH_OPEN, kernel_h, iterations=1)
+            thresh_firma = cv2.subtract(thresh_firma, lineas_h)
+            
+            kernel_v = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 100))
+            lineas_v = cv2.morphologyEx(thresh_firma, cv2.MORPH_OPEN, kernel_v, iterations=1)
+            thresh_limpio = cv2.subtract(thresh_firma, lineas_v)
         
-        # Crear imagen RGBA
+        # ========== MODO 3: CUADRICULADA NEGRA ==========
+        else:  # cuadriculada
+            print(f"   📐 Modo NEGRO PURO - elimina grises")
+            
+            # NO mejorar contraste - trabajar con valores originales
+            # para distinguir negro de gris
+            
+            # UMBRALIZACIÓN AGRESIVA - SOLO LO MÁS OSCURO
+            # Grises claros (líneas) = 150-200
+            # Negro firma = 0-100
+            # Umbral en 120-130 separa perfectamente
+            
+            _, thresh_firma = cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY_INV)
+            
+            print(f"      → Solo píxeles con intensidad < 120 (negro puro)")
+            
+            # Cerrar pequeños huecos en trazos negros
+            kernel_close = np.ones((2,2), np.uint8)
+            thresh_limpio = cv2.morphologyEx(thresh_firma, cv2.MORPH_CLOSE, kernel_close, iterations=1)
+            
+            # NO necesitamos Hough ni morfología para líneas
+            # porque las líneas grises ya fueron eliminadas por el umbral
+        
+        # ========== FILTRADO FINAL ==========
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(thresh_limpio, connectivity=8)
+        
+        mask_final = np.zeros_like(thresh_limpio)
+        
+        # Tamaño mínimo según tipo
+        if tipo == 'blanca':
+            area_min = 10
+        else:
+            area_min = 15
+        
+        for i in range(1, num_labels):
+            area = stats[i, cv2.CC_STAT_AREA]
+            if area >= area_min:
+                mask_final[labels == i] = 255
+        
+        # ========== CREAR IMAGEN FINAL ==========
         img_rgba = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
+        img_rgba[:, :, 3] = mask_final
         
-        # Fondo transparente
-        img_rgba[:, :, 3] = thresh_final
+        mask_bool = mask_final > 0
+        img_rgba[mask_bool, 0:3] = [0, 0, 0]
         
-        # Trazos en negro puro
-        mask = thresh_final > 0
-        img_rgba[mask, 0:3] = [0, 0, 0]
-        
-        # Guardar
         cv2.imwrite(output_path, img_rgba)
         
-        return True, "Firma digitalizada exitosamente"
+        porcentaje = (np.sum(mask_final > 0) / mask_final.size) * 100
+        
+        return True, f"{tipo.upper()} - {width}x{height} ({porcentaje:.1f}%)"
         
     except Exception as e:
-        # Si falla, intentar versión simple
-        try:
-            img = cv2.imread(image_path)
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            _, thresh = cv2.threshold(gray, 170, 255, cv2.THRESH_BINARY_INV)
-            
-            img_rgba = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
-            img_rgba[:, :, 3] = thresh
-            mask = thresh > 0
-            img_rgba[mask, 0:3] = [0, 0, 0]
-            
-            cv2.imwrite(output_path, img_rgba)
-            recortar_firma_png(output_path)
-            return True, "Firma digitalizada (versión simple)"
-        except:
-            return False, f"Error: {str(e)}"
-
-
-def recortar_firma_png(path_png):
-    img = cv2.imread(path_png, cv2.IMREAD_UNCHANGED)  # RGBA
-
-    if img is None or img.shape[2] < 4:
-        return False
-
-    alpha = img[:, :, 3]
-    coords = cv2.findNonZero(alpha)
-
-    if coords is None:
-        return False
-
-    x, y, w, h = cv2.boundingRect(coords)
-    recortada = img[y:y+h, x:x+w]
-
-    cv2.imwrite(path_png, recortada)
-    return True
-
+        return False, f"Error: {str(e)}"
 
 
 def guardar_archivo(file, folder, prefix=''):
@@ -492,6 +556,13 @@ def formatear_fecha_contrato(fecha_obj):
         mes = fecha_obj.month
         anio = fecha_obj.year
         
+        # ============================================================
+        # CALCULAR FECHA DE FINALIZACIÓN (1 AÑO DESPUÉS)
+        # ============================================================
+        fecha_finalizacion = fecha_obj + timedelta(days=365)
+        mes_fin = fecha_finalizacion.month
+        anio_fin = fecha_finalizacion.year
+        
         # Formatear diferentes versiones
         formatos = {
             'mes_anio_espaciado': f"{mes:02d}          {anio % 100:02d}",  # "01          26"
@@ -502,6 +573,9 @@ def formatear_fecha_contrato(fecha_obj):
             'mes_numero': f"{mes:02d}",  # "01"
             'anio': str(anio),  # "2026"
             'anio_corto': f"{anio % 100:02d}",  # "26"
+            
+            # FECHA DE FINALIZACIÓN (1 AÑO DESPUÉS)
+            'finalizacion_mes_anio_espaciado': f"{mes_fin:02d}          {anio_fin % 100:02d}",  # "01          27"
         }
         
         return formatos
@@ -516,7 +590,8 @@ def formatear_fecha_contrato(fecha_obj):
             'dia': '',
             'mes_numero': '',
             'anio': '',
-            'anio_corto': ''
+            'anio_corto': '',
+            'finalizacion_mes_anio_espaciado': '',
         }
 
 
@@ -590,6 +665,7 @@ def generar_contrato_word_pdf(datos_contrato, plantilla_path, output_folder,
             'municipio': datos_contrato.get('municipio', ''),
             'direccion': datos_contrato.get('direccion', ''),
             'plan': datos_contrato.get('plan', ''),
+            'precio': datos_contrato.get('precio', 0),  # ← PRECIO DEL PLAN
             
             # Tipo de contrato con X
             'tipo_contrato': datos_contrato.get('tipo_contrato', ''),
@@ -605,6 +681,9 @@ def generar_contrato_word_pdf(datos_contrato, plantilla_path, output_folder,
             'fecha_mes': formatos_fecha['mes_numero'],  # "01"
             'fecha_anio': formatos_fecha['anio'],  # "2026"
             'fecha_anio_corto': formatos_fecha['anio_corto'],  # "26"
+            
+            # Fecha de finalización (1 año después)
+            'fecha_finalizacion': formatos_fecha['finalizacion_mes_anio_espaciado'],  # "01          27"
             
             # Fecha original (por compatibilidad)
             'fecha_contrato': datos_contrato.get('fecha_contrato', ''),
