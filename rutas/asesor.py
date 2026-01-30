@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, session, redirect, url_for, flash, request, send_file, jsonify
 import mysql.connector
 from config import Config
-from utils import (verificar_documento_identidad, verificar_firma_manual, 
+from utils import (verificar_documento_identidad, verificar_recibo, verificar_firma_manual, 
                    digitalizar_firma, guardar_archivo, allowed_file)
 import os
 from datetime import datetime
@@ -82,6 +82,7 @@ def crear_contrato():
         flash(f'Error al cargar formulario: {str(e)}', 'error')
         return redirect(url_for('asesor.dashboard'))
 
+
 @asesor_bp.route('/crear-contrato', methods=['POST'])
 @login_required
 def crear_contrato_post():
@@ -113,62 +114,85 @@ def crear_contrato_post():
                 return redirect(url_for('asesor.crear_contrato'))
         
         # Validar archivos
-        if 'foto_cc_frontal' not in request.files or 'foto_cc_trasera' not in request.files or 'foto_firma' not in request.files:
-            flash('Debe subir todas las fotos requeridas', 'error')
+        if 'foto_cc_frontal' not in request.files or 'foto_cc_trasera' not in request.files or 'foto_firma' not in request.files or 'foto_recibo' not in request.files:
+            flash('Debe subir todas las fotos requeridas (CC frontal, CC trasera, Firma y Recibo)', 'error')
             return redirect(url_for('asesor.crear_contrato'))
         
         foto_cc_frontal = request.files['foto_cc_frontal']
         foto_cc_trasera = request.files['foto_cc_trasera']
         foto_firma = request.files['foto_firma']
+        foto_recibo = request.files['foto_recibo']
         
-        if not foto_cc_frontal.filename or not foto_cc_trasera.filename or not foto_firma.filename:
+        if not foto_cc_frontal.filename or not foto_cc_trasera.filename or not foto_firma.filename or not foto_recibo.filename:
             flash('Debe subir todas las fotos requeridas', 'error')
             return redirect(url_for('asesor.crear_contrato'))
         
-        # Guardar foto CC frontal
+        # ========== GUARDAR Y VERIFICAR CC FRONTAL ==========
         folder_frontal = os.path.join(Config.UPLOAD_FOLDER, 'cc_frontal')
         filename_frontal = guardar_archivo(foto_cc_frontal, folder_frontal, 'cc_frontal')
         
         if not filename_frontal:
-            flash('Error al guardar foto de CC frontal. Formato no válido', 'error')
+            flash('Error al guardar foto de CC frontal. Formato no válido (solo JPG, JPEG o PNG)', 'error')
             return redirect(url_for('asesor.crear_contrato'))
         
         # Verificar CC frontal
         path_frontal = os.path.join(folder_frontal, filename_frontal)
-        es_valido, confianza, texto = verificar_documento_identidad(path_frontal)
+        es_valido, confianza, mensaje = verificar_documento_identidad(path_frontal)
         
         if not es_valido:
             os.remove(path_frontal)
-            flash('La foto de la cédula frontal no es legible o no es un documento de identidad válido', 'error')
+            flash(f'Cédula frontal rechazada: {mensaje}', 'error')
             return redirect(url_for('asesor.crear_contrato'))
         
-        # Guardar foto CC trasera
+        # ========== GUARDAR Y VERIFICAR CC TRASERA ==========
         folder_trasera = os.path.join(Config.UPLOAD_FOLDER, 'cc_trasera')
         filename_trasera = guardar_archivo(foto_cc_trasera, folder_trasera, 'cc_trasera')
         
         if not filename_trasera:
             os.remove(path_frontal)
-            flash('Error al guardar foto de CC trasera. Formato no válido', 'error')
+            flash('Error al guardar foto de CC trasera. Formato no válido (solo JPG, JPEG o PNG)', 'error')
             return redirect(url_for('asesor.crear_contrato'))
         
         # Verificar CC trasera
         path_trasera = os.path.join(folder_trasera, filename_trasera)
-        es_valido_trasera, _, _ = verificar_documento_identidad(path_trasera)
+        es_valido_trasera, _, mensaje_trasera = verificar_documento_identidad(path_trasera)
         
         if not es_valido_trasera:
             os.remove(path_frontal)
             os.remove(path_trasera)
-            flash('La foto de la cédula trasera no es legible o no es un documento de identidad válido', 'error')
+            flash(f'Cédula trasera rechazada: {mensaje_trasera}', 'error')
             return redirect(url_for('asesor.crear_contrato'))
         
-        # Guardar foto firma
+        # ========== GUARDAR Y VERIFICAR RECIBO ==========
+        folder_recibo = os.path.join(Config.UPLOAD_FOLDER, 'recibos')
+        filename_recibo = guardar_archivo(foto_recibo, folder_recibo, 'recibo')
+        
+        if not filename_recibo:
+            os.remove(path_frontal)
+            os.remove(path_trasera)
+            flash('Error al guardar foto de recibo. Formato no válido (solo JPG, JPEG o PNG)', 'error')
+            return redirect(url_for('asesor.crear_contrato'))
+        
+        # Verificar recibo (MUY FLEXIBLE)
+        path_recibo = os.path.join(folder_recibo, filename_recibo)
+        recibo_valido, mensaje_recibo = verificar_recibo(path_recibo)
+        
+        if not recibo_valido:
+            os.remove(path_frontal)
+            os.remove(path_trasera)
+            os.remove(path_recibo)
+            flash(f'Recibo rechazado: {mensaje_recibo}', 'error')
+            return redirect(url_for('asesor.crear_contrato'))
+        
+        # ========== GUARDAR Y VERIFICAR FIRMA ==========
         folder_firma = os.path.join(Config.UPLOAD_FOLDER, 'firmas')
         filename_firma = guardar_archivo(foto_firma, folder_firma, 'firma')
         
         if not filename_firma:
             os.remove(path_frontal)
             os.remove(path_trasera)
-            flash('Error al guardar foto de firma. Formato no válido', 'error')
+            os.remove(path_recibo)
+            flash('Error al guardar foto de firma. Formato no válido (solo JPG, JPEG o PNG)', 'error')
             return redirect(url_for('asesor.crear_contrato'))
         
         # Verificar firma
@@ -178,11 +202,12 @@ def crear_contrato_post():
         if not firma_valida:
             os.remove(path_frontal)
             os.remove(path_trasera)
+            os.remove(path_recibo)
             os.remove(path_firma)
-            flash(f'Firma no válida: {mensaje_firma}', 'error')
+            flash(f'Firma rechazada: {mensaje_firma}', 'error')
             return redirect(url_for('asesor.crear_contrato'))
         
-        # Digitalizar firma
+        # ========== DIGITALIZAR FIRMA ==========
         folder_digitalizada = os.path.join(Config.UPLOAD_FOLDER, 'firmas_digitalizadas')
         filename_digitalizada = f'digitalizada_{filename_firma}'.replace('.jpg', '.png').replace('.jpeg', '.png')
         path_digitalizada = os.path.join(folder_digitalizada, filename_digitalizada)
@@ -192,11 +217,12 @@ def crear_contrato_post():
         if not exito_digitalizacion:
             os.remove(path_frontal)
             os.remove(path_trasera)
+            os.remove(path_recibo)
             os.remove(path_firma)
             flash(f'Error al digitalizar firma: {mensaje_digitalizacion}', 'error')
             return redirect(url_for('asesor.crear_contrato'))
         
-        # Guardar en base de datos
+        # ========== GUARDAR EN BASE DE DATOS ==========
         conn = get_db_connection()
         cursor = conn.cursor()
         
@@ -204,8 +230,8 @@ def crear_contrato_post():
         INSERT INTO contratos (asesor_id, nombre_cliente, numero_documento, correo_electronico,
                               telefono_contacto1, telefono_contacto2, barrio, departamento, municipio,
                               direccion, plan, tipo_contrato, fecha_contrato, foto_cc_frontal,
-                              foto_cc_trasera, foto_firma, firma_digitalizada, estado)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'POR_REVISAR')
+                              foto_cc_trasera, foto_firma, foto_recibo, firma_digitalizada, estado)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'POR_REVISAR')
         """
         
         valores = (
@@ -225,6 +251,7 @@ def crear_contrato_post():
             filename_frontal,
             filename_trasera,
             filename_firma,
+            filename_recibo,
             filename_digitalizada
         )
         
@@ -233,7 +260,7 @@ def crear_contrato_post():
         cursor.close()
         conn.close()
         
-        flash('Contrato creado exitosamente y en estado de revisión', 'success')
+        flash('¡Contrato creado exitosamente! Estado: Por Revisar ✓', 'success')
         return redirect(url_for('asesor.ver_contratos'))
         
     except mysql.connector.IntegrityError:
@@ -242,6 +269,9 @@ def crear_contrato_post():
     except Exception as e:
         flash(f'Error al crear contrato: {str(e)}', 'error')
         return redirect(url_for('asesor.crear_contrato'))
+
+
+
 
 @asesor_bp.route('/ver-contratos')
 @login_required

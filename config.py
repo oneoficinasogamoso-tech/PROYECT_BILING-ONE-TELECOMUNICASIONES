@@ -1,3 +1,6 @@
+import os
+
+
 class Config:
     SECRET_KEY = '678908766789087'
 
@@ -20,4 +23,5 @@ class Config:
     os.makedirs(os.path.join(UPLOAD_FOLDER, 'cc_trasera'), exist_ok=True)
     os.makedirs(os.path.join(UPLOAD_FOLDER, 'firmas'), exist_ok=True)
     os.makedirs(os.path.join(UPLOAD_FOLDER, 'firmas_digitalizadas'), exist_ok=True)
+    os.makedirs(os.path.join(UPLOAD_FOLDER, 'recibos'), exist_ok=True)
     os.makedirs(CONTRATOS_FOLDER, exist_ok=True)

@@ -831,7 +831,7 @@
                     </div>
                 </div>
 
-                <!-- Documentación -->
+<!-- Documentación -->
                 <div class="form-section">
                     <h3 class="section-title">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -851,79 +851,106 @@
                                     <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                         <polyline points="17 8 12 3 7 8"></polyline>
-<line x1="12" y1="3" x2="12" y2="15"></line>
-</svg>
-<span class="upload-text">Subir CC Frontal</span>
-<span class="upload-hint">JPG, JPEG o PNG - Máx 16MB</span>
-</label>
-<input type="file" id="foto_cc_frontal" name="foto_cc_frontal" accept="image/jpeg,image/jpg,image/png" required onchange="previewFile(this, 'preview_frontal')">
-<div class="file-preview" id="preview_frontal">
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-<polyline points="20 6 9 17 4 12"></polyline>
-</svg>
-<span></span>
-<button type="button" onclick="removeFile('foto_cc_frontal', 'preview_frontal')">✕</button>
-</div>
-</div>
-</div>
-                    <!-- CC Trasera -->
-                    <div class="form-group">
-                        <label>Cédula - Trasera <span class="required">*</span></label>
-                        <div class="file-upload">
-                            <label for="foto_cc_trasera" class="file-upload-label">
-                                <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                    <polyline points="17 8 12 3 7 8"></polyline>
-                                    <line x1="12" y1="3" x2="12" y2="15"></line>
-                                </svg>
-                                <span class="upload-text">Subir CC Trasera</span>
-                                <span class="upload-hint">JPG, JPEG o PNG - Máx 16MB</span>
-                            </label>
-                            <input type="file" id="foto_cc_trasera" name="foto_cc_trasera" accept="image/jpeg,image/jpg,image/png" required onchange="previewFile(this, 'preview_trasera')">
-                            <div class="file-preview" id="preview_trasera">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                </svg>
-                                <span></span>
-                                <button type="button" onclick="removeFile('foto_cc_trasera', 'preview_trasera')">✕</button>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                    <span class="upload-text">Subir CC Frontal</span>
+                                    <span class="upload-hint">JPG, JPEG o PNG - Máx 16MB</span>
+                                </label>
+                                <input type="file" id="foto_cc_frontal" name="foto_cc_frontal" accept="image/jpeg,image/jpg,image/png" required onchange="previewFile(this, 'preview_frontal')">
+                                <div class="file-preview" id="preview_frontal">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                    <span></span>
+                                    <button type="button" onclick="removeFile('foto_cc_frontal', 'preview_frontal')">✕</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- CC Trasera -->
+                        <div class="form-group">
+                            <label>Cédula - Trasera <span class="required">*</span></label>
+                            <div class="file-upload">
+                                <label for="foto_cc_trasera" class="file-upload-label">
+                                    <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                    <span class="upload-text">Subir CC Trasera</span>
+                                    <span class="upload-hint">JPG, JPEG o PNG - Máx 16MB</span>
+                                </label>
+                                <input type="file" id="foto_cc_trasera" name="foto_cc_trasera" accept="image/jpeg,image/jpg,image/png" required onchange="previewFile(this, 'preview_trasera')">
+                                <div class="file-preview" id="preview_trasera">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                    <span></span>
+                                    <button type="button" onclick="removeFile('foto_cc_trasera', 'preview_trasera')">✕</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recibo -->
+                        <div class="form-group">
+                            <label>Foto del Recibo <span class="required">*</span></label>
+                            <div class="file-upload">
+                                <label for="foto_recibo" class="file-upload-label">
+                                    <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                    <span class="upload-text">Subir Recibo</span>
+                                    <span class="upload-hint">Calidad media aceptada - JPG, PNG</span>
+                                </label>
+                                <input type="file" id="foto_recibo" name="foto_recibo" accept="image/jpeg,image/jpg,image/png" required onchange="previewFile(this, 'preview_recibo')">
+                                <div class="file-preview" id="preview_recibo">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                    <span></span>
+                                    <button type="button" onclick="removeFile('foto_recibo', 'preview_recibo')">✕</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Firma -->
+                        <div class="form-group">
+                            <label>Firma del Cliente <span class="required">*</span></label>
+                            <div class="file-upload">
+                                <label for="foto_firma" class="file-upload-label">
+                                    <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                    <span class="upload-text">Subir Firma</span>
+                                    <span class="upload-hint">Acepta cuaderno con líneas - JPG, PNG</span>
+                                </label>
+                                <input type="file" id="foto_firma" name="foto_firma" accept="image/jpeg,image/jpg,image/png" required onchange="previewFile(this, 'preview_firma')">
+                                <div class="file-preview" id="preview_firma">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                    <span></span>
+                                    <button type="button" onclick="removeFile('foto_firma', 'preview_firma')">✕</button>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Firma -->
-                    <div class="form-group">
-                        <label>Firma del Cliente <span class="required">*</span></label>
-                        <div class="file-upload">
-                            <label for="foto_firma" class="file-upload-label">
-                                <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                    <polyline points="17 8 12 3 7 8"></polyline>
-                                    <line x1="12" y1="3" x2="12" y2="15"></line>
-                                </svg>
-                                <span class="upload-text">Subir Firma</span>
-                                <span class="upload-hint">Fondo blanco, trazos negros - JPG, PNG</span>
-                            </label>
-                            <input type="file" id="foto_firma" name="foto_firma" accept="image/jpeg,image/jpg,image/png" required onchange="previewFile(this, 'preview_firma')">
-                            <div class="file-preview" id="preview_firma">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                </svg>
-                                <span></span>
-                                <button type="button" onclick="removeFile('foto_firma', 'preview_firma')">✕</button>
-                            </div>
-                        </div>
+                    <div style="margin-top: 15px; padding: 15px; background: #E8F5E9; border-left: 4px solid #4CAF50; border-radius: 8px;">
+                        <strong style="color: #2E7D32;">✓ Requisitos de las fotos:</strong>
+                        <ul style="margin: 10px 0 0 20px; color: #2E7D32; font-size: 14px;">
+                            <li>Las fotos pueden ser de calidad media - no necesitan ser profesionales</li>
+                            <li>Cédulas: Solo deben ser medianamente legibles</li>
+                            <li>Recibo: Acepta calidad baja, solo debe verse algo de texto</li>
+                            <li>Firma: Puede estar en hoja de cuaderno con líneas</li>
+                            <li>Todas las fotos pueden tomarse con celular normal</li>
+                        </ul>
                     </div>
                 </div>
-
-                <div style="margin-top: 15px; padding: 15px; background: #FFF3E0; border-left: 4px solid #FF9800; border-radius: 8px;">
-                    <strong style="color: #E65100;">⚠️ Requisitos de las fotos:</strong>
-                    <ul style="margin: 10px 0 0 20px; color: #E65100; font-size: 14px;">
-                        <li>Las fotos de la cédula deben ser claras y legibles</li>
-                        <li>La firma debe estar en fondo completamente blanco</li>
-                        <li>La firma debe ser hecha a mano con trazos negros (no impresa)</li>
-                    </ul>
-                </div>
-            </div>
 
             <!-- Form Actions -->
             <div class="form-actions">
