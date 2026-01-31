@@ -75,9 +75,13 @@ def crear_contrato():
         cursor.close()
         conn.close()
         
+        # Obtener datos previos del formulario si existen (después de error)
+        datos_previos = session.pop('datos_formulario', {})
+        
         return render_template('asesor/crear_contrato.html', 
                              nombre=session.get('nombre'),
-                             planes=planes)
+                             planes=planes,
+                             datos=datos_previos)
     except Exception as e:
         flash(f'Error al cargar formulario: {str(e)}', 'error')
         return redirect(url_for('asesor.dashboard'))
@@ -86,6 +90,12 @@ def crear_contrato():
 @asesor_bp.route('/crear-contrato', methods=['POST'])
 @login_required
 def crear_contrato_post():
+    
+    def guardar_datos_y_redirigir(datos_form):
+        """Guarda los datos del formulario en sesión antes de redirigir"""
+        session['datos_formulario'] = datos_form
+        return guardar_datos_y_redirigir(datos)
+    
     try:
         # Obtener datos del formulario
         datos = {
@@ -100,7 +110,8 @@ def crear_contrato_post():
             'direccion': request.form.get('direccion'),
             'plan': request.form.get('plan'),
             'tipo_contrato': request.form.get('tipo_contrato'),
-            'fecha_contrato': request.form.get('fecha_contrato')
+            'fecha_contrato': request.form.get('fecha_contrato'),
+            'observaciones': request.form.get('observaciones', '')  # ← NUEVO CAMPO
         }
         
         # ========== OBTENER PRECIO DEL PLAN SELECCIONADO ==========
@@ -115,7 +126,7 @@ def crear_contrato_post():
             cursor.close()
             conn.close()
             flash('Error: Plan no encontrado en la base de datos', 'error')
-            return redirect(url_for('asesor.crear_contrato'))
+            return guardar_datos_y_redirigir(datos)
         
         precio_plan = plan_info['precio']
         # ========== FIN OBTENCIÓN PRECIO ==========
@@ -130,14 +141,14 @@ def crear_contrato_post():
                 cursor.close()
                 conn.close()
                 flash(f'El campo {campo.replace("_", " ")} es requerido', 'error')
-                return redirect(url_for('asesor.crear_contrato'))
+                return guardar_datos_y_redirigir(datos)
         
         # Validar archivos
         if 'foto_cc_frontal' not in request.files or 'foto_cc_trasera' not in request.files or 'foto_firma' not in request.files or 'foto_recibo' not in request.files:
             cursor.close()
             conn.close()
             flash('Debe subir todas las fotos requeridas (CC frontal, CC trasera, Firma y Recibo)', 'error')
-            return redirect(url_for('asesor.crear_contrato'))
+            return guardar_datos_y_redirigir(datos)
         
         foto_cc_frontal = request.files['foto_cc_frontal']
         foto_cc_trasera = request.files['foto_cc_trasera']
@@ -148,7 +159,7 @@ def crear_contrato_post():
             cursor.close()
             conn.close()
             flash('Debe subir todas las fotos requeridas', 'error')
-            return redirect(url_for('asesor.crear_contrato'))
+            return guardar_datos_y_redirigir(datos)
         
         # ========== GUARDAR Y VERIFICAR CC FRONTAL ==========
         folder_frontal = os.path.join(Config.UPLOAD_FOLDER, 'cc_frontal')
@@ -158,7 +169,7 @@ def crear_contrato_post():
             cursor.close()
             conn.close()
             flash('Error al guardar foto de CC frontal. Formato no válido (solo JPG, JPEG o PNG)', 'error')
-            return redirect(url_for('asesor.crear_contrato'))
+            return guardar_datos_y_redirigir(datos)
         
         # Verificar CC frontal
         path_frontal = os.path.join(folder_frontal, filename_frontal)
@@ -169,7 +180,7 @@ def crear_contrato_post():
             cursor.close()
             conn.close()
             flash(f'Cédula frontal rechazada: {mensaje}', 'error')
-            return redirect(url_for('asesor.crear_contrato'))
+            return guardar_datos_y_redirigir(datos)
         
         # ========== GUARDAR Y VERIFICAR CC TRASERA ==========
         folder_trasera = os.path.join(Config.UPLOAD_FOLDER, 'cc_trasera')
@@ -180,7 +191,7 @@ def crear_contrato_post():
             cursor.close()
             conn.close()
             flash('Error al guardar foto de CC trasera. Formato no válido (solo JPG, JPEG o PNG)', 'error')
-            return redirect(url_for('asesor.crear_contrato'))
+            return guardar_datos_y_redirigir(datos)
         
         # Verificar CC trasera
         path_trasera = os.path.join(folder_trasera, filename_trasera)
@@ -192,7 +203,7 @@ def crear_contrato_post():
             cursor.close()
             conn.close()
             flash(f'Cédula trasera rechazada: {mensaje_trasera}', 'error')
-            return redirect(url_for('asesor.crear_contrato'))
+            return guardar_datos_y_redirigir(datos)
         
         # ========== GUARDAR Y VERIFICAR RECIBO ==========
         folder_recibo = os.path.join(Config.UPLOAD_FOLDER, 'recibos')
@@ -204,7 +215,7 @@ def crear_contrato_post():
             cursor.close()
             conn.close()
             flash('Error al guardar foto de recibo. Formato no válido (solo JPG, JPEG o PNG)', 'error')
-            return redirect(url_for('asesor.crear_contrato'))
+            return guardar_datos_y_redirigir(datos)
         
         # Verificar recibo (MUY FLEXIBLE)
         path_recibo = os.path.join(folder_recibo, filename_recibo)
@@ -217,7 +228,7 @@ def crear_contrato_post():
             cursor.close()
             conn.close()
             flash(f'Recibo rechazado: {mensaje_recibo}', 'error')
-            return redirect(url_for('asesor.crear_contrato'))
+            return guardar_datos_y_redirigir(datos)
         
         # ========== GUARDAR Y VERIFICAR FIRMA ==========
         folder_firma = os.path.join(Config.UPLOAD_FOLDER, 'firmas')
@@ -230,7 +241,7 @@ def crear_contrato_post():
             cursor.close()
             conn.close()
             flash('Error al guardar foto de firma. Formato no válido (solo JPG, JPEG o PNG)', 'error')
-            return redirect(url_for('asesor.crear_contrato'))
+            return guardar_datos_y_redirigir(datos)
         
         # Verificar firma (SÚPER PERMISIVO)
         path_firma = os.path.join(folder_firma, filename_firma)
@@ -244,7 +255,7 @@ def crear_contrato_post():
             cursor.close()
             conn.close()
             flash(f'Firma rechazada: {mensaje_firma}', 'error')
-            return redirect(url_for('asesor.crear_contrato'))
+            return guardar_datos_y_redirigir(datos)
         
         # ========== DIGITALIZAR FIRMA (REMOVER FONDO) ==========
         folder_digitalizadas = os.path.join(Config.UPLOAD_FOLDER, 'firmas_digitalizadas')
@@ -266,17 +277,17 @@ def crear_contrato_post():
             cursor.close()
             conn.close()
             flash('Error al procesar la firma. Por favor intente con otra foto', 'error')
-            return redirect(url_for('asesor.crear_contrato'))
+            return guardar_datos_y_redirigir(datos)
         
-        # ========== GUARDAR EN BASE DE DATOS CON EL PRECIO ==========
+        # ========== GUARDAR EN BASE DE DATOS CON EL PRECIO Y OBSERVACIONES ==========
         try:
             query = """
             INSERT INTO contratos 
             (asesor_id, nombre_cliente, numero_documento, correo_electronico, 
             telefono_contacto1, telefono_contacto2, barrio, departamento, 
             municipio, direccion, plan, precio, tipo_contrato, fecha_contrato, 
-            foto_cc_frontal, foto_cc_trasera, foto_firma, foto_recibo, firma_digitalizada)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            foto_cc_frontal, foto_cc_trasera, foto_firma, foto_recibo, firma_digitalizada, observaciones)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             
             valores = (
@@ -298,7 +309,8 @@ def crear_contrato_post():
                 filename_trasera,
                 filename_firma,
                 filename_recibo,
-                filename_digitalizada
+                filename_digitalizada,
+                datos['observaciones']  # ← OBSERVACIONES
             )
             
             cursor.execute(query, valores)
@@ -325,7 +337,7 @@ def crear_contrato_post():
         
     except mysql.connector.IntegrityError:
         flash('El número de documento ya existe en el sistema', 'error')
-        return redirect(url_for('asesor.crear_contrato'))
+        return guardar_datos_y_redirigir(datos)
     except Exception as e:
         flash(f'Error al crear contrato: {str(e)}', 'error')
         return redirect(url_for('asesor.crear_contrato'))
@@ -459,7 +471,7 @@ def generar_contrato(contrato_id):
             flash('❌ ERROR: El archivo de firma digitalizada no existe. No se puede generar el PDF.', 'error')
             return redirect(url_for('asesor.ver_contratos'))
         
-        # Preparar datos para el contrato INCLUYENDO EL PRECIO
+        # Preparar datos para el contrato INCLUYENDO EL PRECIO Y OBSERVACIONES
         datos_contrato = {
             'nombre_cliente': contrato['nombre_cliente'],
             'numero_documento': contrato['numero_documento'],
@@ -471,7 +483,8 @@ def generar_contrato(contrato_id):
             'municipio': contrato['municipio'],
             'direccion': contrato['direccion'],
             'plan': contrato['plan'],
-            'precio': contrato['precio'],  # ← AGREGAR EL PRECIO
+            'precio': contrato['precio'],
+            'observaciones': contrato.get('observaciones', ''),  # ← OBSERVACIONES
             'tipo_contrato': contrato['tipo_contrato'],
             'fecha_contrato': contrato['fecha_contrato'],  # Pasar el objeto datetime directamente
             'asesor_nombre': contrato['asesor_nombre'],

@@ -729,27 +729,27 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="nombre_cliente">Nombre Completo <span class="required">*</span></label>
-                            <input type="text" id="nombre_cliente" name="nombre_cliente" required placeholder="Ej: Juan Pérez García">
+                            <input type="text" id="nombre_cliente" name="nombre_cliente" required placeholder="Ej: Juan Pérez García" value="{{ datos.nombre_cliente if datos else '' }}">
                         </div>
 
                         <div class="form-group">
                             <label for="numero_documento">Número de Documento <span class="required">*</span></label>
-                            <input type="text" id="numero_documento" name="numero_documento" required placeholder="Ej: 1234567890">
+                            <input type="text" id="numero_documento" name="numero_documento" required placeholder="Ej: 1234567890" value="{{ datos.numero_documento if datos else '' }}">
                         </div>
 
                         <div class="form-group">
                             <label for="correo_electronico">Correo Electrónico</label>
-                            <input type="email" id="correo_electronico" name="correo_electronico" placeholder="ejemplo@correo.com">
+                            <input type="email" id="correo_electronico" name="correo_electronico" placeholder="ejemplo@correo.com" value="{{ datos.correo_electronico if datos else '' }}">
                         </div>
 
                         <div class="form-group">
                             <label for="telefono_contacto1">Teléfono 1 <span class="required">*</span></label>
-                            <input type="tel" id="telefono_contacto1" name="telefono_contacto1" required placeholder="Ej: 3101234567">
+                            <input type="tel" id="telefono_contacto1" name="telefono_contacto1" required placeholder="Ej: 3101234567" value="{{ datos.telefono_contacto1 if datos else '' }}">
                         </div>
 
                         <div class="form-group">
                             <label for="telefono_contacto2">Teléfono 2</label>
-                            <input type="tel" id="telefono_contacto2" name="telefono_contacto2" placeholder="Ej: 3209876543">
+                            <input type="tel" id="telefono_contacto2" name="telefono_contacto2" placeholder="Ej: 3209876543" value="{{ datos.telefono_contacto2 if datos else '' }}">
                         </div>
                     </div>
                 </div>
@@ -767,24 +767,24 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="departamento">Departamento <span class="required">*</span></label>
-                            <input type="text" id="departamento" name="departamento" required placeholder="Ej: Boyacá">
+                            <input type="text" id="departamento" name="departamento" required placeholder="Ej: Boyacá" value="{{ datos.departamento if datos else '' }}">
                         </div>
 
                         <div class="form-group">
                             <label for="municipio">Municipio <span class="required">*</span></label>
-                            <input type="text" id="municipio" name="municipio" required placeholder="Ej: Tunja">
+                            <input type="text" id="municipio" name="municipio" required placeholder="Ej: Tunja" value="{{ datos.municipio if datos else '' }}">
                         </div>
 
                         <div class="form-group">
                             <label for="barrio">Barrio <span class="required">*</span></label>
-                            <input type="text" id="barrio" name="barrio" required placeholder="Ej: Centro">
+                            <input type="text" id="barrio" name="barrio" required placeholder="Ej: Centro" value="{{ datos.barrio if datos else '' }}">
                         </div>
                     </div>
 
                     <div class="form-grid full">
                         <div class="form-group">
                             <label for="direccion">Dirección Completa <span class="required">*</span></label>
-                            <textarea id="direccion" name="direccion" required placeholder="Ej: Calle 10 # 5-20, Casa Blanca"></textarea>
+                            <textarea id="direccion" name="direccion" required placeholder="Ej: Calle 10 # 5-20, Casa Blanca">{{ datos.direccion if datos else '' }}</textarea>
                         </div>
                     </div>
                 </div>
@@ -805,14 +805,14 @@
                             <select id="plan" name="plan" required>
                                 <option value="">Seleccione un plan</option>
                                 {% for plan in planes %}
-                                <option value="{{ plan.nombre_plan }}">{{ plan.nombre_plan }} - {{ plan.velocidad }}</option>
+                                <option value="{{ plan.nombre_plan }}" {% if datos and datos.plan == plan.nombre_plan %}selected{% endif %}>{{ plan.nombre_plan }} - {{ plan.velocidad }}</option>
                                 {% endfor %}
                             </select>
                         </div>
 
                         <div class="form-group">
                             <label for="fecha_contrato">Fecha del Contrato <span class="required">*</span></label>
-                            <input type="date" id="fecha_contrato" name="fecha_contrato" required>
+                            <input type="date" id="fecha_contrato" name="fecha_contrato" required value="{{ datos.fecha_contrato if datos else '' }}">
                         </div>
                     </div>
 
@@ -820,13 +820,31 @@
                         <label>Tipo de Contrato <span class="required">*</span></label>
                         <div class="radio-group">
                             <div class="radio-option">
-                                <input type="radio" id="residencial" name="tipo_contrato" value="RESIDENCIAL" required>
+                                <input type="radio" id="residencial" name="tipo_contrato" value="RESIDENCIAL" required {% if datos and datos.tipo_contrato == 'RESIDENCIAL' %}checked{% endif %}>
                                 <label for="residencial">Residencial</label>
                             </div>
                             <div class="radio-option">
-                                <input type="radio" id="corporativo" name="tipo_contrato" value="CORPORATIVO" required>
+                                <input type="radio" id="corporativo" name="tipo_contrato" value="CORPORATIVO" required {% if datos and datos.tipo_contrato == 'CORPORATIVO' %}checked{% endif %}>
                                 <label for="corporativo">Corporativo</label>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Observaciones / Puntos Adicionales -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                        Observaciones / Puntos Adicionales
+                    </h3>
+                    
+                    <div class="form-grid full">
+                        <div class="form-group">
+                            <label for="observaciones">Observaciones (Opcional)</label>
+                            <textarea id="observaciones" name="observaciones" rows="4" placeholder="Agregue cualquier observación o punto adicional sobre el contrato...">{{ datos.observaciones if datos else '' }}</textarea>
                         </div>
                     </div>
                 </div>
@@ -1020,10 +1038,13 @@
         return true;
     }
 
-    // Establecer fecha de hoy por defecto
+    // Establecer fecha de hoy por defecto si no hay fecha previa
     document.addEventListener('DOMContentLoaded', function() {
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('fecha_contrato').value = today;
+        const fechaInput = document.getElementById('fecha_contrato');
+        if (!fechaInput.value) {
+            const today = new Date().toISOString().split('T')[0];
+            fechaInput.value = today;
+        }
     });
 </script>
 </body>

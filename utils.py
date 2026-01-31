@@ -674,6 +674,7 @@ def generar_contrato_word_pdf(datos_contrato, plantilla_path, output_folder,
             'direccion': datos_contrato.get('direccion', ''),
             'plan': datos_contrato.get('plan', ''),
             'precio': datos_contrato.get('precio', 0),  # ← PRECIO DEL PLAN
+            'observaciones': datos_contrato.get('observaciones', ''),  # ← OBSERVACIONES
             
             # Tipo de contrato con X
             'tipo_contrato': datos_contrato.get('tipo_contrato', ''),
