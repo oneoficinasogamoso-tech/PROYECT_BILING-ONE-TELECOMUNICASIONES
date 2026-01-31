@@ -551,16 +551,6 @@
                     Ver Contratos
                 </a>
             </li>
-            <li>
-                <a href="{{ url_for('asesor.descargar_contrato_pdf') }}">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
-                    Descargar Contrato PDF
-                </a>
-            </li>
         </ul>
 
         <a href="{{ url_for('login.logout') }}" class="btn-logout">
@@ -659,17 +649,7 @@
                 <p>Consulta y filtra todos los contratos que has creado</p>
             </a>
 
-            <a href="{{ url_for('asesor.descargar_contrato_pdf') }}" class="action-card">
-                <div class="action-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
-                </div>
-                <h3>Descargar Plantilla</h3>
-                <p>Descarga el contrato en PDF para que el cliente lo lea</p>
-            </a>
+
         </div>
     </main>
 
