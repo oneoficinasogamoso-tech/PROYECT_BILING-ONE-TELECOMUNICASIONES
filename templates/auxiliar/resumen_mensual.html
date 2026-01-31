@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Resumen Mensual</title>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Resumen Mensual por Asesor</h1>
+        
+        <!-- Selector de mes -->
+        <form method="GET" class="month-selector">
+            <div class="form-inline">
+                <label>Mes:</label>
+                <select name="mes" onchange="this.form.submit()">
+                    {% for m in range(1, 13) %}
+                    <option value="{{ m }}" {{ 'selected' if mes == m else '' }}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+                
+                <label>Año:</label>
+                <select name="anio" onchange="this.form.submit()">
+                    {% for a in range(2024, 2027) %}
+                    <option value="{{ a }}" {{ 'selected' if anio == a else '' }}>{{ a }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+        
+        <h2>{{ nombre_mes }} {{ anio }}</h2>
+        
+        <div class="summary-grid">
+            {% for asesor in resumen %}
+            <div class="asesor-card">
+                <div class="asesor-header">
+                    <div class="asesor-avatar">{{ asesor.asesor_nombre[0] }}</div>
+                    <h3>{{ asesor.asesor_nombre }}</h3>
+                </div>
+                
+                <div class="stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Total Contratos</span>
+                        <span class="stat-value primary">{{ asesor.total_contratos }}</span>
+                    </div>
+                    
+                    <div class="stat-item">
+                        <span class="stat-label">Ingresos</span>
+                        <span class="stat-value success">${{ "{:,.0f}".format(asesor.ingresos_total) }}</span>
+                    </div>
+                    
+                    <div class="stat-item">
+                        <span class="stat-label">Instalados</span>
+                        <span class="stat-value">{{ asesor.instalados }}</span>
+                    </div>
+                    
+                    <div class="stat-item">
+                        <span class="stat-label">Por Revisar</span>
+                        <span class="stat-value warning">{{ asesor.por_revisar }}</span>
+                    </div>
+                    
+                    <div class="stat-item">
+                        <span class="stat-label">Rechazados</span>
+                        <span class="stat-value error">{{ asesor.rechazados }}</span>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <p>No hay datos para este mes</p>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        h1 { color: #1565C0; margin-bottom: 20px; }
+        h2 { color: #555; margin: 20px 0; text-align: center; }
+        .month-selector { background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+        .form-inline { display: flex; gap: 20px; align-items: center; }
+        .form-inline label { font-weight: 600; }
+        .form-inline select { padding: 8px 15px; border: 1px solid #ddd; border-radius: 6px; }
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .asesor-card { background: #fff; border: 2px solid #e0e0e0; border-radius: 12px; padding: 20px; transition: all 0.3s; }
+        .asesor-card:hover { border-color: #1565C0; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .asesor-header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #f0f0f0; }
+        .asesor-avatar { width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #1565C0, #42A5F5); color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; }
+        .asesor-header h3 { color: #333; font-size: 18px; }
+        .stats { display: flex; flex-direction: column; gap: 12px; }
+        .stat-item { display: flex; justify-content: space-between; align-items: center; }
+        .stat-label { color: #666; font-size: 14px; }
+        .stat-value { font-size: 20px; font-weight: bold; }
+        .stat-value.primary { color: #1565C0; }
+        .stat-value.success { color: #4CAF50; }
+        .stat-value.warning { color: #FF9800; }
+        .stat-value.error { color: #F44336; }
+    </style>
+</body>
+</html>

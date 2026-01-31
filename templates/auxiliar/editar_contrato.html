@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Contrato</title>
+</head>
+<body>
+    <div class="container">
+        <h1>Editar Contrato #{{ contrato.id }}</h1>
+        
+        <form method="POST">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Nombre Cliente *</label>
+                    <input type="text" name="nombre_cliente" value="{{ contrato.nombre_cliente }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Documento *</label>
+                    <input type="text" name="numero_documento" value="{{ contrato.numero_documento }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Correo</label>
+                    <input type="email" name="correo_electronico" value="{{ contrato.correo_electronico or '' }}">
+                </div>
+                
+                <div class="form-group">
+                    <label>Teléfono 1 *</label>
+                    <input type="tel" name="telefono_contacto1" value="{{ contrato.telefono_contacto1 }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Teléfono 2</label>
+                    <input type="tel" name="telefono_contacto2" value="{{ contrato.telefono_contacto2 or '' }}">
+                </div>
+                
+                <div class="form-group">
+                    <label>Departamento *</label>
+                    <input type="text" name="departamento" value="{{ contrato.departamento }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Municipio *</label>
+                    <input type="text" name="municipio" value="{{ contrato.municipio }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Barrio *</label>
+                    <input type="text" name="barrio" value="{{ contrato.barrio }}" required>
+                </div>
+                
+                <div class="form-group full-width">
+                    <label>Dirección *</label>
+                    <input type="text" name="direccion" value="{{ contrato.direccion }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Plan *</label>
+                    <select name="plan" required>
+                        {% for plan in planes %}
+                        <option value="{{ plan.nombre_plan }}" {{ 'selected' if contrato.plan == plan.nombre_plan else '' }}>
+                            {{ plan.nombre_plan }} - ${{ "{:,.0f}".format(plan.precio) }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Tipo Contrato *</label>
+                    <select name="tipo_contrato" required>
+                        <option value="RESIDENCIAL" {{ 'selected' if contrato.tipo_contrato == 'RESIDENCIAL' else '' }}>Residencial</option>
+                        <option value="CORPORATIVO" {{ 'selected' if contrato.tipo_contrato == 'CORPORATIVO' else '' }}>Corporativo</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Fecha Contrato *</label>
+                    <input type="date" name="fecha_contrato" value="{{ contrato.fecha_contrato.strftime('%Y-%m-%d') }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Estado *</label>
+                    <select name="estado" required>
+                        <option value="POR_REVISAR" {{ 'selected' if contrato.estado == 'POR_REVISAR' else '' }}>Por Revisar</option>
+                        <option value="INSTALADO" {{ 'selected' if contrato.estado == 'INSTALADO' else '' }}>Instalado</option>
+                        <option value="RECHAZADO" {{ 'selected' if contrato.estado == 'RECHAZADO' else '' }}>Rechazado</option>
+                    </select>
+                </div>
+                
+                <div class="form-group full-width">
+                    <label>Observaciones</label>
+                    <textarea name="observaciones" rows="3">{{ contrato.observaciones or '' }}</textarea>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn-primary">💾 Guardar Cambios</button>
+                <a href="{{ url_for('auxiliar.ver_contratos') }}" class="btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        h1 { color: #1565C0; margin-bottom: 30px; }
+        .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group.full-width { grid-column: 1 / -1; }
+        .form-group label { font-weight: 600; margin-bottom: 5px; color: #555; font-size: 14px; }
+        .form-group input, .form-group select, .form-group textarea { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; font-family: inherit; }
+        .form-actions { margin-top: 30px; display: flex; gap: 10px; }
+        .btn-primary, .btn-secondary { padding: 12px 30px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; text-decoration: none; display: inline-block; font-size: 16px; }
+        .btn-primary { background: #4CAF50; color: white; }
+        .btn-primary:hover { background: #45a049; }
+        .btn-secondary { background: #757575; color: white; }
+        .btn-secondary:hover { background: #616161; }
+        @media (max-width: 768px) {
+            .form-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</body>
+</html>

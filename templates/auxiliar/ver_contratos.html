@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ver Contratos - Auxiliar</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auxiliar.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Gestión de Contratos</h1>
+        
+        <!-- Filtros -->
+        <form method="GET" class="filters-form">
+            <div class="filter-group">
+                <label>Fecha Inicio:</label>
+                <input type="date" name="fecha_inicio" value="{{ request.args.get('fecha_inicio', '') }}">
+            </div>
+            
+            <div class="filter-group">
+                <label>Fecha Fin:</label>
+                <input type="date" name="fecha_fin" value="{{ request.args.get('fecha_fin', '') }}">
+            </div>
+            
+            <div class="filter-group">
+                <label>Asesor:</label>
+                <select name="asesor_id">
+                    <option value="">Todos</option>
+                    {% for asesor in asesores %}
+                    <option value="{{ asesor.id }}" {{ 'selected' if request.args.get('asesor_id') == asesor.id|string else '' }}>
+                        {{ asesor.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>Municipio:</label>
+                <select name="municipio">
+                    <option value="">Todos</option>
+                    {% for mun in municipios %}
+                    <option value="{{ mun }}" {{ 'selected' if request.args.get('municipio') == mun else '' }}>
+                        {{ mun }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>Estado:</label>
+                <select name="estado">
+                    <option value="">Todos</option>
+                    <option value="POR_REVISAR" {{ 'selected' if request.args.get('estado') == 'POR_REVISAR' else '' }}>Por Revisar</option>
+                    <option value="INSTALADO" {{ 'selected' if request.args.get('estado') == 'INSTALADO' else '' }}>Instalado</option>
+                    <option value="RECHAZADO" {{ 'selected' if request.args.get('estado') == 'RECHAZADO' else '' }}>Rechazado</option>
+                </select>
+            </div>
+            
+            <button type="submit" class="btn-primary">Filtrar</button>
+            <a href="{{ url_for('auxiliar.ver_contratos') }}" class="btn-secondary">Limpiar</a>
+        </form>
+        
+        <!-- Tabla de contratos -->
+        <div class="table-responsive">
+            <table class="contracts-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Cliente</th>
+                        <th>Documento</th>
+                        <th>Asesor</th>
+                        <th>Municipio</th>
+                        <th>Plan</th>
+                        <th>Precio</th>
+                        <th>Estado</th>
+                        <th>Fecha</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for contrato in contratos %}
+                    <tr>
+                        <td>{{ contrato.id }}</td>
+                        <td>{{ contrato.nombre_cliente }}</td>
+                        <td>{{ contrato.numero_documento }}</td>
+                        <td>{{ contrato.asesor_nombre }}</td>
+                        <td>{{ contrato.municipio }}</td>
+                        <td>{{ contrato.plan }}</td>
+                        <td>${{ "{:,.0f}".format(contrato.precio) }}</td>
+                        <td>
+                            <span class="badge badge-{{ contrato.estado.lower() }}">
+                                {{ contrato.estado.replace('_', ' ') }}
+                            </span>
+                        </td>
+                        <td>{{ contrato.fecha_contrato.strftime('%d/%m/%Y') }}</td>
+                        <td class="actions">
+                            <a href="{{ url_for('auxiliar.editar_contrato', contrato_id=contrato.id) }}" 
+                               class="btn-edit" title="Editar">✏️</a>
+                            <a href="{{ url_for('auxiliar.descargar_contrato', contrato_id=contrato.id) }}" 
+                               class="btn-download" title="Descargar PDF">📄</a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="10" style="text-align: center;">No se encontraron contratos</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="summary">
+            <p><strong>Total contratos mostrados:</strong> {{ contratos|length }}</p>
+        </div>
+    </div>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        h1 { color: #1565C0; margin-bottom: 30px; }
+        .filters-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; padding: 20px; background: #f9f9f9; border-radius: 8px; }
+        .filter-group { display: flex; flex-direction: column; }
+        .filter-group label { font-weight: 600; margin-bottom: 5px; color: #555; font-size: 14px; }
+        .filter-group input, .filter-group select { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+        .btn-primary, .btn-secondary { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; text-decoration: none; display: inline-block; }
+        .btn-primary { background: #1565C0; color: white; }
+        .btn-primary:hover { background: #0D47A1; }
+        .btn-secondary { background: #757575; color: white; }
+        .btn-secondary:hover { background: #616161; }
+        .table-responsive { overflow-x: auto; }
+        .contracts-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .contracts-table th { background: #1565C0; color: white; padding: 12px; text-align: left; font-weight: 600; }
+        .contracts-table td { padding: 12px; border-bottom: 1px solid #e0e0e0; }
+        .contracts-table tbody tr:hover { background: #f5f5f5; }
+        .badge { padding: 5px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .badge-por_revisar { background: #FFF3E0; color: #E65100; }
+        .badge-instalado { background: #E8F5E9; color: #2E7D32; }
+        .badge-rechazado { background: #FFEBEE; color: #C62828; }
+        .actions { display: flex; gap: 10px; }
+        .btn-edit, .btn-download { text-decoration: none; font-size: 20px; }
+        .btn-edit:hover, .btn-download:hover { transform: scale(1.2); }
+        .summary { margin-top: 20px; padding: 15px; background: #E3F2FD; border-radius: 8px; }
+    </style>
+</body>
+</html>
