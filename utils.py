@@ -267,7 +267,7 @@ def verificar_firma_manual(image_path):
         areas = [cv2.contourArea(c) for c in contours if cv2.contourArea(c) > 10]
         
         if not areas:
-            return False, 0, "No se detectan trazos de firma"
+            return False, 0, "No se detectan trazos de firma."
         
         # Los trazos manuscritos tienen variación en grosor
         area_total = sum(areas)
