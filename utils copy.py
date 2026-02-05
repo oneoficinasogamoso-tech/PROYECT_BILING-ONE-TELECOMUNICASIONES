@@ -10,7 +10,6 @@ from docx2pdf import convert
 import subprocess
 import platform
 from datetime import datetime, timedelta
-import pythoncom  # ← FIX para error CoInitialize
 
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 os.environ["TESSDATA_PREFIX"] = r"C:\Program Files\Tesseract-OCR\tessdata"
@@ -604,58 +603,6 @@ def formatear_fecha_contrato(fecha_obj):
         }
 
 
-
-def generar_nombre_archivo_unico(output_folder, numero_doc, extension, prefijo=""):
-    """
-    Genera un nombre de archivo único agregando un sufijo secuencial.
-    
-    Ejemplo:
-    - Si existe 123456.pdf, genera 123456_0001.pdf
-    - Si existe 123456_0001.pdf, genera 123456_0002.pdf
-    - Y así sucesivamente...
-    
-    Args:
-        output_folder: carpeta donde se guardarán los archivos
-        numero_doc: número de documento base
-        extension: extensión del archivo (ej: 'pdf', 'docx')
-        prefijo: prefijo opcional (ej: 'auxiliar', 'temp')
-    
-    Returns:
-        ruta completa del archivo con nombre único
-    """
-    # Crear carpeta si no existe
-    os.makedirs(output_folder, exist_ok=True)
-    
-    # Construir nombre base
-    if prefijo:
-        nombre_base = f"{numero_doc}_{prefijo}"
-    else:
-        nombre_base = numero_doc
-    
-    # Probar primero sin sufijo
-    archivo_sin_sufijo = os.path.join(output_folder, f"{nombre_base}.{extension}")
-    if not os.path.exists(archivo_sin_sufijo):
-        return archivo_sin_sufijo
-    
-    # Si existe, buscar el siguiente número disponible
-    contador = 1
-    while True:
-        sufijo = f"{contador:04d}"  # Formato: 0001, 0002, 0003...
-        nombre_con_sufijo = f"{nombre_base}_{sufijo}.{extension}"
-        ruta_completa = os.path.join(output_folder, nombre_con_sufijo)
-        
-        if not os.path.exists(ruta_completa):
-            return ruta_completa
-        
-        contador += 1
-        
-        # Protección contra bucle infinito (máximo 9999 archivos)
-        if contador > 9999:
-            # Usar timestamp como último recurso
-            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-            return os.path.join(output_folder, f"{nombre_base}_{timestamp}.{extension}")
-
-
 def generar_contrato_word_pdf(datos_contrato, plantilla_path, output_folder, 
                               tamanio_firma_pulgadas=1.5):
     """
@@ -784,7 +731,7 @@ def generar_contrato_word_pdf(datos_contrato, plantilla_path, output_folder,
         # GUARDAR WORD TEMPORAL
         # ============================================================
         numero_doc = datos_contrato.get('numero_documento', 'sin_documento')
-        temp_docx = generar_nombre_archivo_unico(output_folder, numero_doc, 'docx', 'temp')
+        temp_docx = os.path.join(output_folder, f"{numero_doc}_temp.docx")
         
         # Guardar preservando TOTALMENTE el formato original
         doc.save(temp_docx)
@@ -792,7 +739,7 @@ def generar_contrato_word_pdf(datos_contrato, plantilla_path, output_folder,
         # ============================================================
         # CONVERTIR A PDF PRESERVANDO EL DISEÑO
         # ============================================================
-        output_pdf = generar_nombre_archivo_unico(output_folder, numero_doc, 'pdf')
+        output_pdf = os.path.join(output_folder, f"{numero_doc}.pdf")
         
         exito_conversion = convertir_word_a_pdf(temp_docx, output_pdf)
         
@@ -839,15 +786,8 @@ def convertir_word_a_pdf(docx_path, pdf_path):
             # Usar docx2pdf (requiere Microsoft Word instalado)
             # Word es el MEJOR para preservar diseño
             try:
-                # ============================================================
-                # FIX CRÍTICO: Inicializar COM antes de usar docx2pdf
-                # ============================================================
-                pythoncom.CoInitialize()
-                try:
-                    convert(docx_path, pdf_path)
-                    return True
-                finally:
-                    pythoncom.CoUninitialize()
+                convert(docx_path, pdf_path)
+                return True
             except Exception as e:
                 print(f"Error con docx2pdf: {e}")
                 # Intentar con LibreOffice como fallback

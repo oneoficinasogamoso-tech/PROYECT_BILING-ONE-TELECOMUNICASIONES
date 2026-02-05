@@ -5,11 +5,11 @@ class Config:
     SECRET_KEY = '678908766789087'
 
     # Database configuration
-    MYSQL_HOST = 'bodcmkeu41vr5guf9yyv-mysql.services.clever-cloud.com'
-    MYSQL_USER = 'uoixtnvnmtvpmkel'
-    MYSQL_PASSWORD = 'zZpEqgGz8gRWbaOs4zN'
-    MYSQL_DB = 'bodcmkeu41vr5guf9yyv'
-    MYSQL_PORT = 21324
+    MYSQL_HOST = 'bayhr8qklsiu6zqznnwh-mysql.services.clever-cloud.com'
+    MYSQL_USER = 'uwioqepbquygtlkr'
+    MYSQL_PASSWORD = '7INuvP2DNU3FpRcJCdoc'
+    MYSQL_DB = 'bayhr8qklsiu6zqznnwh'
+    MYSQL_PORT = 3306
 
 
     MYSQL_CURSORCLASS = 'DictCursor'

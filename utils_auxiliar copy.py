@@ -8,7 +8,7 @@ import os
 from docxtpl import DocxTemplate, InlineImage
 from docx.shared import Inches
 from datetime import datetime, timedelta
-from utils import convertir_word_a_pdf, formatear_fecha_contrato, generar_nombre_archivo_unico
+from utils import convertir_word_a_pdf, formatear_fecha_contrato
 
 
 def generar_contrato_auxiliar_pdf(datos_contrato, plantilla_path, output_folder, 
@@ -117,11 +117,11 @@ def generar_contrato_auxiliar_pdf(datos_contrato, plantilla_path, output_folder,
 
         # --- Guardar Word temporal ---
         numero_doc = datos_contrato.get('numero_documento', 'sin_documento')
-        temp_docx = generar_nombre_archivo_unico(output_folder, numero_doc, 'docx', 'auxiliar_temp')
+        temp_docx = os.path.join(output_folder, f"{numero_doc}_auxiliar_temp.docx")
         doc.save(temp_docx)
 
         # --- Convertir a PDF ---
-        output_pdf = generar_nombre_archivo_unico(output_folder, numero_doc, 'pdf', 'auxiliar')
+        output_pdf = os.path.join(output_folder, f"{numero_doc}_auxiliar.pdf")
         exito_conversion = convertir_word_a_pdf(temp_docx, output_pdf)
 
         # Limpiar temporal
