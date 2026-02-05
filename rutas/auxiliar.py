@@ -230,8 +230,7 @@ def editar_contrato_post(contrato_id):
             tipo_contrato = %s,
             fecha_contrato = %s,
             observaciones = %s,
-            estado = %s,
-            updated_at = NOW()
+            estado = %s
         WHERE id = %s
         """
         
@@ -269,11 +268,19 @@ def editar_contrato_post(contrato_id):
 @auxiliar_bp.route('/descargar-contrato/<int:contrato_id>')
 @login_required
 def descargar_contrato(contrato_id):
+    """
+    Genera y descarga el contrato PDF del auxiliar.
+    - Usa plantillas auxiliar
+    - Inserta CC frontal, CC trasera y recibo si existen
+    """
     try:
+        print(f"\n{'='*60}")
+        print(f"AUXILIAR - DESCARGA CONTRATO #{contrato_id}")
+        print(f"{'='*60}\n")
+        
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        
-        # Obtener datos del contrato con información del asesor
+
         query = """
         SELECT c.*, u.nombre as asesor_nombre 
         FROM contratos c
@@ -282,98 +289,132 @@ def descargar_contrato(contrato_id):
         """
         cursor.execute(query, (contrato_id,))
         contrato = cursor.fetchone()
-        
         cursor.close()
         conn.close()
-        
+
         if not contrato:
-            flash('Contrato no encontrado', 'error')
+            print("❌ Contrato no encontrado")
+            flash('Contrato no encontrado.', 'error')
             return redirect(url_for('auxiliar.ver_contratos'))
-        
-        # Validar que tenga firma digitalizada
+
+        print(f"✅ Contrato: {contrato['nombre_cliente']} ({contrato['numero_documento']})")
+
+        # Firma digitalizada (obligatoria)
         if not contrato.get('firma_digitalizada'):
-            flash('❌ ERROR: Este contrato no tiene firma digitalizada', 'error')
+            print("❌ Sin firma digitalizada")
+            flash('Contrato sin firma digitalizada.', 'error')
             return redirect(url_for('auxiliar.ver_contratos'))
-        
-        # Rutas de archivos
+
         firma_path = os.path.join(Config.UPLOAD_FOLDER, 'firmas_digitalizadas', contrato['firma_digitalizada'])
-        cc_frontal_path = os.path.join(Config.UPLOAD_FOLDER, 'cc_frontal', contrato['foto_cc_frontal'])
-        cc_trasera_path = os.path.join(Config.UPLOAD_FOLDER, 'cc_trasera', contrato['foto_cc_trasera'])
-        recibo_path = os.path.join(Config.UPLOAD_FOLDER, 'recibos', contrato['foto_recibo'])
+        print(f"📝 Firma: {firma_path}")
         
-        # Validar que existan todos los archivos
         if not os.path.exists(firma_path):
-            flash('❌ ERROR: No se encontró la firma digitalizada', 'error')
+            print(f"❌ Firma no encontrada en disco")
+            flash(f'Firma no encontrada: {firma_path}', 'error')
             return redirect(url_for('auxiliar.ver_contratos'))
         
-        if not os.path.exists(cc_frontal_path):
-            flash('❌ ERROR: No se encontró la CC frontal', 'error')
-            return redirect(url_for('auxiliar.ver_contratos'))
+        print("✅ Firma OK")
+
+        # Archivos opcionales
+        cc_frontal_path = None
+        cc_trasera_path = None
+        recibo_path = None
+
+        print("\n📋 Archivos opcionales:")
         
-        if not os.path.exists(cc_trasera_path):
-            flash('❌ ERROR: No se encontró la CC trasera', 'error')
-            return redirect(url_for('auxiliar.ver_contratos'))
-        
-        if not os.path.exists(recibo_path):
-            flash('❌ ERROR: No se encontró el recibo', 'error')
-            return redirect(url_for('auxiliar.ver_contratos'))
-        
-        # Preparar datos para el contrato
-        datos_contrato = {
-            'nombre_cliente': contrato['nombre_cliente'],
-            'numero_documento': contrato['numero_documento'],
-            'correo_electronico': contrato['correo_electronico'] or 'N/A',
-            'telefono_contacto1': contrato['telefono_contacto1'],
-            'telefono_contacto2': contrato['telefono_contacto2'] or 'N/A',
-            'barrio': contrato['barrio'],
-            'departamento': contrato['departamento'],
-            'municipio': contrato['municipio'],
-            'direccion': contrato['direccion'],
-            'plan': contrato['plan'],
-            'precio': contrato['precio'],
-            'observaciones': contrato.get('observaciones', ''),
-            'tipo_contrato': contrato['tipo_contrato'],
-            'fecha_contrato': contrato['fecha_contrato'],
-            'asesor_nombre': contrato['asesor_nombre'],
-            'firma_digitalizada_path': firma_path
-        }
-        
-        # Seleccionar plantilla del auxiliar (sin marca de agua)
+        if contrato.get('foto_cc_frontal'):
+            ruta = os.path.join(Config.UPLOAD_FOLDER, 'cc_frontal', contrato['foto_cc_frontal'])
+            if os.path.exists(ruta):
+                cc_frontal_path = ruta
+                print(f"  ✅ CC Frontal: {ruta}")
+            else:
+                print(f"  ⚠️  CC Frontal NO encontrada: {ruta}")
+
+        if contrato.get('foto_cc_trasera'):
+            ruta = os.path.join(Config.UPLOAD_FOLDER, 'cc_trasera', contrato['foto_cc_trasera'])
+            if os.path.exists(ruta):
+                cc_trasera_path = ruta
+                print(f"  ✅ CC Trasera: {ruta}")
+            else:
+                print(f"  ⚠️  CC Trasera NO encontrada: {ruta}")
+
+        if contrato.get('foto_recibo'):
+            ruta = os.path.join(Config.UPLOAD_FOLDER, 'recibos', contrato['foto_recibo'])
+            if os.path.exists(ruta):
+                recibo_path = ruta
+                print(f"  ✅ Recibo: {ruta}")
+            else:
+                print(f"  ⚠️  Recibo NO encontrado: {ruta}")
+
+        # Plantilla
         if contrato['plan'] == 'Solo TV':
-            plantilla_nombre = 'plantilla_contrato_auxiliar_solo_tv.docx'
+            plantilla_nombre = 'plantilla_contrato_solo_tv_auxiliar.docx'
         else:
             plantilla_nombre = 'plantilla_contrato_auxiliar.docx'
-        
+
         plantilla_path = os.path.join(Config.PLANTILLAS_FOLDER, plantilla_nombre)
-        
+        print(f"\n📄 Plantilla: {plantilla_path}")
+
         if not os.path.exists(plantilla_path):
-            flash(f'Plantilla de contrato no encontrada: {plantilla_nombre}', 'error')
+            print(f"❌ Plantilla no encontrada")
+            flash(f'Plantilla no encontrada: {plantilla_nombre}', 'error')
             return redirect(url_for('auxiliar.ver_contratos'))
         
-        # Generar el contrato PDF con CC y recibo
+        print("✅ Plantilla OK")
+
+        # Datos del contrato
+        datos_contrato = {
+            'nombre_cliente':      contrato['nombre_cliente'],
+            'numero_documento':    contrato['numero_documento'],
+            'correo_electronico':  contrato['correo_electronico'] or 'N/A',
+            'telefono_contacto1':  contrato['telefono_contacto1'],
+            'telefono_contacto2':  contrato['telefono_contacto2'] or 'N/A',
+            'barrio':              contrato['barrio'],
+            'departamento':        contrato['departamento'],
+            'municipio':           contrato['municipio'],
+            'direccion':           contrato['direccion'],
+            'plan':                contrato['plan'],
+            'precio':              contrato['precio'],
+            'observaciones':       contrato.get('observaciones', ''),
+            'tipo_contrato':       contrato['tipo_contrato'],
+            'fecha_contrato':      contrato['fecha_contrato'],
+            'asesor_nombre':       contrato['asesor_nombre'],
+            'firma_digitalizada_path': firma_path
+        }
+
+        print(f"\n🔧 Generando PDF en: {Config.CONTRATOS_GENERADOS_FOLDER}")
+        
+        # Generar PDF
+        from utils_auxiliar import generar_contrato_auxiliar_pdf
         exito, mensaje, pdf_path = generar_contrato_auxiliar_pdf(
-            datos_contrato, 
-            plantilla_path, 
+            datos_contrato,
+            plantilla_path,
             Config.CONTRATOS_GENERADOS_FOLDER,
             cc_frontal_path,
             cc_trasera_path,
             recibo_path
         )
-        
+
         if not exito:
+            print(f"❌ ERROR: {mensaje}")
             flash(mensaje, 'error')
             return redirect(url_for('auxiliar.ver_contratos'))
-        
-        # Enviar el PDF para descargar
+
+        print(f"✅ PDF generado: {pdf_path}\n{'='*60}\n")
+
+        # Enviar PDF
         return send_file(
             pdf_path,
             as_attachment=True,
             download_name=f"Contrato_{contrato['numero_documento']}_Auxiliar.pdf",
             mimetype='application/pdf'
         )
-        
+
     except Exception as e:
-        flash(f'Error al generar contrato: {str(e)}', 'error')
+        import traceback
+        print(f"\n❌ EXCEPCIÓN:")
+        traceback.print_exc()
+        flash(f'Error: {str(e)}', 'error')
         return redirect(url_for('auxiliar.ver_contratos'))
 
 
@@ -381,7 +422,6 @@ def descargar_contrato(contrato_id):
 @login_required
 def resumen_mensual():
     try:
-        # Obtener mes y año de los parámetros (por defecto mes actual)
         hoy = datetime.now()
         mes = request.args.get('mes', hoy.month, type=int)
         anio = request.args.get('anio', hoy.year, type=int)
@@ -390,7 +430,6 @@ def resumen_mensual():
         resumen = obtener_resumen_mensual_por_asesor(conn, mes, anio)
         conn.close()
         
-        # Nombre del mes
         nombre_mes = calendar.month_name[mes]
         
         return render_template('auxiliar/resumen_mensual.html',
@@ -411,11 +450,9 @@ def analisis_ventas():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        # Obtener asesores para filtro
         cursor.execute("SELECT id, nombre FROM usuarios WHERE rol = 'ASESOR' ORDER BY nombre")
         asesores = cursor.fetchall()
         
-        # Obtener municipios para filtro
         cursor.execute("SELECT DISTINCT municipio FROM contratos ORDER BY municipio")
         municipios = [row['municipio'] for row in cursor.fetchall()]
         
@@ -427,68 +464,33 @@ def analisis_ventas():
                              asesores=asesores,
                              municipios=municipios)
     except Exception as e:
-        flash(f'Error al cargar análisis: {str(e)}', 'error')
+        flash(f'Error: {str(e)}', 'error')
         return redirect(url_for('auxiliar.dashboard'))
 
 
-@auxiliar_bp.route('/api/estadisticas-ventas')
+@auxiliar_bp.route('/api/estadisticas-contratos')
 @login_required
-def api_estadisticas_ventas():
-    """API para obtener estadísticas de ventas en formato JSON"""
+def api_estadisticas_contratos():
     try:
-        # Obtener filtros
         fecha_inicio = request.args.get('fecha_inicio')
         fecha_fin = request.args.get('fecha_fin')
         asesor_id = request.args.get('asesor_id', type=int)
         municipio = request.args.get('municipio')
-        periodo = request.args.get('periodo', 'mes')  # dia, semana, mes
+        estado = request.args.get('estado')
         
-        # Si no hay fechas, usar el periodo especificado
-        if not fecha_inicio or not fecha_fin:
-            hoy = datetime.now()
-            if periodo == 'dia':
-                fecha_inicio = hoy.strftime('%Y-%m-%d')
-                fecha_fin = hoy.strftime('%Y-%m-%d')
-            elif periodo == 'semana':
-                fecha_inicio = (hoy - timedelta(days=7)).strftime('%Y-%m-%d')
-                fecha_fin = hoy.strftime('%Y-%m-%d')
-            else:  # mes
-                fecha_inicio = hoy.replace(day=1).strftime('%Y-%m-%d')
-                fecha_fin = hoy.strftime('%Y-%m-%d')
-        
-        conn = get_db_connection()
-        estadisticas = obtener_estadisticas_ventas(conn, fecha_inicio, fecha_fin, asesor_id, municipio)
-        conn.close()
-        
-        # Convertir decimales a float para JSON
-        for item in estadisticas.get('por_municipio', []):
-            item['ingresos'] = float(item['ingresos'])
-        
-        for item in estadisticas.get('por_asesor', []):
-            item['ingresos'] = float(item['ingresos'])
-        
-        for item in estadisticas.get('por_plan', []):
-            item['ingresos'] = float(item['ingresos'])
-        
-        return jsonify(estadisticas)
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@auxiliar_bp.route('/api/contratos-diarios')
-@login_required
-def api_contratos_diarios():
-    """API para obtener contratos por día (últimos 30 días)"""
-    try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        asesor_id = request.args.get('asesor_id', type=int)
-        municipio = request.args.get('municipio')
-        
-        where_clauses = ["fecha_contrato >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)"]
+        where_clauses = []
         params = []
+        
+        if fecha_inicio:
+            where_clauses.append("DATE(fecha_contrato) >= %s")
+            params.append(fecha_inicio)
+        
+        if fecha_fin:
+            where_clauses.append("DATE(fecha_contrato) <= %s")
+            params.append(fecha_fin)
         
         if asesor_id:
             where_clauses.append("asesor_id = %s")
@@ -498,32 +500,126 @@ def api_contratos_diarios():
             where_clauses.append("municipio = %s")
             params.append(municipio)
         
+        if estado and estado != 'todos':
+            where_clauses.append("estado = %s")
+            params.append(estado.upper())
+        
+        where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
+        
+        query = f"SELECT COUNT(*) as total FROM contratos WHERE {where_sql}"
+        cursor.execute(query, params)
+        total_contratos = cursor.fetchone()['total']
+        
+        query = f"""
+        SELECT municipio, COUNT(*) as cantidad
+        FROM contratos
+        WHERE {where_sql}
+        GROUP BY municipio
+        ORDER BY cantidad DESC
+        """
+        cursor.execute(query, params)
+        por_municipio = cursor.fetchall()
+        
+        query = f"""
+        SELECT estado, COUNT(*) as cantidad
+        FROM contratos
+        WHERE {where_sql}
+        GROUP BY estado
+        """
+        cursor.execute(query, params)
+        por_estado = cursor.fetchall()
+        
+        query = f"""
+        SELECT u.nombre as asesor, COUNT(*) as cantidad
+        FROM contratos c
+        JOIN usuarios u ON c.asesor_id = u.id
+        WHERE {where_sql}
+        GROUP BY u.nombre
+        ORDER BY cantidad DESC
+        """
+        cursor.execute(query, params)
+        por_asesor = cursor.fetchall()
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'total_contratos': total_contratos,
+            'por_municipio': por_municipio,
+            'por_estado': por_estado,
+            'por_asesor': por_asesor
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@auxiliar_bp.route('/api/contratos-tendencia')
+@login_required
+def api_contratos_tendencia():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        fecha_inicio = request.args.get('fecha_inicio')
+        fecha_fin = request.args.get('fecha_fin')
+        asesor_id = request.args.get('asesor_id', type=int)
+        municipios = request.args.getlist('municipios[]')
+        
+        if not fecha_inicio or not fecha_fin:
+            hoy = datetime.now()
+            fecha_fin = hoy.strftime('%Y-%m-%d')
+            fecha_inicio = (hoy - timedelta(days=30)).strftime('%Y-%m-%d')
+        
+        where_clauses = ["DATE(fecha_contrato) BETWEEN %s AND %s"]
+        params = [fecha_inicio, fecha_fin]
+        
+        if asesor_id:
+            where_clauses.append("asesor_id = %s")
+            params.append(asesor_id)
+        
+        if municipios:
+            placeholders = ','.join(['%s'] * len(municipios))
+            where_clauses.append(f"municipio IN ({placeholders})")
+            params.extend(municipios)
+        
         where_sql = " AND ".join(where_clauses)
         
         query = f"""
-        SELECT DATE(fecha_contrato) as fecha, COUNT(*) as cantidad, COALESCE(SUM(precio), 0) as ingresos
+        SELECT 
+            DATE(fecha_contrato) as fecha,
+            estado,
+            COUNT(*) as cantidad
         FROM contratos
         WHERE {where_sql}
-        GROUP BY DATE(fecha_contrato)
-        ORDER BY fecha
+        GROUP BY DATE(fecha_contrato), estado
+        ORDER BY fecha, estado
         """
         
         cursor.execute(query, params)
         resultados = cursor.fetchall()
         
-        # Convertir fechas a string y decimales a float
-        datos = []
+        datos = {}
         for row in resultados:
-            datos.append({
-                'fecha': row['fecha'].strftime('%Y-%m-%d'),
-                'cantidad': row['cantidad'],
-                'ingresos': float(row['ingresos'])
-            })
+            fecha_str = row['fecha'].strftime('%Y-%m-%d')
+            estado = row['estado']
+            
+            if fecha_str not in datos:
+                datos[fecha_str] = {
+                    'fecha': fecha_str,
+                    'INSTALADO': 0,
+                    'POR_REVISAR': 0,
+                    'RECHAZADO': 0,
+                    'total': 0
+                }
+            
+            datos[fecha_str][estado] = row['cantidad']
+            datos[fecha_str]['total'] += row['cantidad']
         
         cursor.close()
         conn.close()
         
-        return jsonify(datos)
+        return jsonify(list(datos.values()))
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500

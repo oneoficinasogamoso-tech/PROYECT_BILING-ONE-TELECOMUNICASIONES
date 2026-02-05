@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resumen Mensual - ONE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #1565C0;
+            --primary-dark: #0D47A1;
+            --success: #4CAF50;
+            --warning: #FF9800;
+            --danger: #F44336;
+            --bg-main: #F8FAFC;
+            --bg-card: #FFFFFF;
+            --text-primary: #1E293B;
+            --text-secondary: #64748B;
+            --border: #E2E8F0;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+        }
+        .header {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .nav-menu {
+            display: flex;
+            gap: 1rem;
+        }
+        .nav-link {
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .nav-link.active {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+        .page-header {
+            margin-bottom: 2rem;
+        }
+        .page-title {
+            font-size: 1.875rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .month-selector {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            border: 1px solid var(--border);
+        }
+        .selector-form {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .selector-form label {
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+        .selector-form select {
+            padding: 0.625rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.875rem;
+            background: white;
+            min-width: 150px;
+        }
+        .selector-form select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.1);
+        }
+        .period-display {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1.125rem;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+        .asesor-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            border: 2px solid var(--border);
+            transition: all 0.2s;
+        }
+        .asesor-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            transform: translateY(-2px);
+        }
+        .asesor-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--bg-main);
+        }
+        .asesor-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 800;
+        }
+        .asesor-name {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .stats-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            background: var(--bg-main);
+            border-radius: 8px;
+        }
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+        .stat-value.primary { color: var(--primary); }
+        .stat-value.success { color: var(--success); }
+        .stat-value.warning { color: var(--warning); }
+        .stat-value.danger { color: var(--danger); }
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+            .nav-menu {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div>
+                <h1 style="font-size: 1.5rem; font-weight: 700;">🔐 ONE Admin Panel</h1>
+                <p style="font-size: 0.875rem; opacity: 0.9;">{{ nombre }} - ADMINISTRADOR</p>
+            </div>
+            <nav class="nav-menu">
+                <a href="{{ url_for('admin.dashboard') }}" class="nav-link">🏠 Dashboard</a>
+                <a href="{{ url_for('admin.ver_contratos') }}" class="nav-link">📋 Contratos</a>
+                <a href="{{ url_for('admin.resumen_mensual') }}" class="nav-link active">📅 Resumen</a>
+                <a href="{{ url_for('admin.analisis_ventas') }}" class="nav-link">📊 Análisis</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="page-header">
+            <h1 class="page-title">📅 Resumen Mensual por Asesor</h1>
+            <p style="color: var(--text-secondary);">Estadísticas detalladas del rendimiento de cada asesor</p>
+        </div>
+
+        <div class="month-selector">
+            <form method="GET" class="selector-form">
+                <label>Mes:</label>
+                <select name="mes" onchange="this.form.submit()">
+                    {% for m in range(1, 13) %}
+                    <option value="{{ m }}" {{ 'selected' if mes == m }}>
+                        {{ ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+                            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'][m-1] }}
+                    </option>
+                    {% endfor %}
+                </select>
+                
+                <label>Año:</label>
+                <select name="anio" onchange="this.form.submit()">
+                    {% for a in range(2023, 2028) %}
+                    <option value="{{ a }}" {{ 'selected' if anio == a }}>{{ a }}</option>
+                    {% endfor %}
+                </select>
+                
+                <div class="period-display">{{ nombre_mes }} {{ anio }}</div>
+            </form>
+        </div>
+
+        <div class="summary-grid">
+            {% for asesor in resumen %}
+            <div class="asesor-card">
+                <div class="asesor-header">
+                    <div class="asesor-avatar">{{ asesor.asesor_nombre[0] }}</div>
+                    <h3 class="asesor-name">{{ asesor.asesor_nombre }}</h3>
+                </div>
+                
+                <div class="stats-list">
+                    <div class="stat-item">
+                        <span class="stat-label">Total Contratos</span>
+                        <span class="stat-value primary">{{ asesor.total_contratos }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Instalados</span>
+                        <span class="stat-value success">{{ asesor.instalados }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Por Revisar</span>
+                        <span class="stat-value warning">{{ asesor.por_revisar }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Rechazados</span>
+                        <span class="stat-value danger">{{ asesor.rechazados }}</span>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem;">No hay datos para este periodo</h3>
+                <p>Selecciona otro mes y año para ver el resumen</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>

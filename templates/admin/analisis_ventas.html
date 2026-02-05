@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análisis de Contratos - ONE</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #1565C0;
+            --primary-dark: #0D47A1;
+            --secondary: #42A5F5;
+            --success: #4CAF50;
+            --warning: #FF9800;
+            --danger: #F44336;
+            --bg-main: #F8FAFC;
+            --bg-card: #FFFFFF;
+            --text-primary: #1E293B;
+            --text-secondary: #64748B;
+            --border: #E2E8F0;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: var(--shadow-md);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .header-title h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Filter Panel */
+        .filter-panel {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .filter-group label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .filter-group input,
+        .filter-group select {
+            padding: 0.625rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .filter-group input:focus,
+        .filter-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.1);
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.625rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-secondary {
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: white;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .stat-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .stat-icon.primary { background: rgba(21, 101, 192, 0.1); }
+        .stat-icon.success { background: rgba(76, 175, 80, 0.1); }
+        .stat-icon.warning { background: rgba(255, 152, 0, 0.1); }
+        .stat-icon.danger { background: rgba(244, 67, 54, 0.1); }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        /* Charts Grid */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-container {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+        }
+
+        .chart-container.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .chart-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .chart-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        .chart-options {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .chart-option-btn {
+            padding: 0.375rem 0.75rem;
+            border: 1px solid var(--border);
+            background: white;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .chart-option-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .chart-canvas {
+            position: relative;
+            height: 300px;
+        }
+
+        .chart-canvas canvas {
+            max-height: 100%;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .filter-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stat-value {
+                font-size: 1.5rem;
+            }
+
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: flex-start;
+            }
+        }
+
+        /* Loading State */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            border: 3px solid var(--border);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-right: 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="header-title">
+                <a href="{{ url_for('admin.dashboard') }}" class="back-btn">
+                    ← Volver
+                </a>
+                <div>
+                    <h1>📊 Análisis de Contratos</h1>
+                    <p style="font-size: 0.875rem; opacity: 0.9;">Panel de gestión y análisis avanzado</p>
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-size: 0.875rem; opacity: 0.9;">{{ nombre }}</div>
+                <div style="font-size: 0.75rem; opacity: 0.7;">ADMINISTRADOR</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Filter Panel -->
+        <div class="filter-panel">
+            <div class="filter-grid">
+                <div class="filter-group">
+                    <label>Fecha Inicio</label>
+                    <input type="date" id="fechaInicio">
+                </div>
+                <div class="filter-group">
+                    <label>Fecha Fin</label>
+                    <input type="date" id="fechaFin">
+                </div>
+                <div class="filter-group">
+                    <label>Asesor</label>
+                    <select id="asesorSelect">
+                        <option value="">Todos los asesores</option>
+                        {% for asesor in asesores %}
+                        <option value="{{ asesor.id }}">{{ asesor.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Ciudad</label>
+                    <select id="municipioSelect">
+                        <option value="">Todas las ciudades</option>
+                        {% for mun in municipios %}
+                        <option value="{{ mun }}">{{ mun }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Estado</label>
+                    <select id="estadoSelect">
+                        <option value="todos">Todos</option>
+                        <option value="INSTALADO">Instalados</option>
+                        <option value="POR_REVISAR">Por Revisar</option>
+                        <option value="RECHAZADO">Rechazados</option>
+                    </select>
+                </div>
+            </div>
+            <div class="filter-actions">
+                <button class="btn btn-primary" onclick="cargarDatos()">
+                    🔍 Aplicar Filtros
+                </button>
+                <button class="btn btn-secondary" onclick="limpiarFiltros()">
+                    ↺ Limpiar
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <span class="stat-label">Total Contratos</span>
+                    <div class="stat-icon primary">📋</div>
+                </div>
+                <div class="stat-value" id="totalContratos">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <span class="stat-label">Instalados</span>
+                    <div class="stat-icon success">✓</div>
+                </div>
+                <div class="stat-value" id="totalInstalados">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <span class="stat-label">Por Revisar</span>
+                    <div class="stat-icon warning">⏱</div>
+                </div>
+                <div class="stat-value" id="totalPorRevisar">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <span class="stat-label">Rechazados</span>
+                    <div class="stat-icon danger">✕</div>
+                </div>
+                <div class="stat-value" id="totalRechazados">0</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+            <!-- Chart 1: Por Ciudad -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div>
+                        <h3 class="chart-title">Contratos por Ciudad</h3>
+                        <p class="chart-subtitle">Distribución geográfica</p>
+                    </div>
+                </div>
+                <div class="chart-canvas">
+                    <canvas id="chartCiudad"></canvas>
+                </div>
+            </div>
+
+            <!-- Chart 2: Por Asesor -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div>
+                        <h3 class="chart-title">Contratos por Asesor</h3>
+                        <p class="chart-subtitle">Rendimiento del equipo</p>
+                    </div>
+                </div>
+                <div class="chart-canvas">
+                    <canvas id="chartAsesor"></canvas>
+                </div>
+            </div>
+
+            <!-- Chart 3: Por Estado -->
+            <div class="chart-container full-width">
+                <div class="chart-header">
+                    <div>
+                        <h3 class="chart-title">Tendencia en el Tiempo</h3>
+                        <p class="chart-subtitle">Evolución de contratos por estado</p>
+                    </div>
+                </div>
+                <div class="chart-canvas" style="height: 400px;">
+                    <canvas id="chartTendencia"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let chartCiudad, chartAsesor, chartTendencia;
+        
+        // Configuración de colores
+        const colors = {
+            primary: '#1565C0',
+            success: '#4CAF50',
+            warning: '#FF9800',
+            danger: '#F44336',
+            secondary: '#42A5F5',
+            palette: [
+                '#1565C0', '#4CAF50', '#FF9800', '#F44336', 
+                '#42A5F5', '#66BB6A', '#FFB74D', '#EF5350',
+                '#1976D2', '#81C784', '#FFD54F', '#E57373'
+            ]
+        };
+
+        // Inicializar fechas por defecto (últimos 30 días)
+        window.addEventListener('DOMContentLoaded', () => {
+            const hoy = new Date();
+            const hace30Dias = new Date(hoy);
+            hace30Dias.setDate(hoy.getDate() - 30);
+            
+            document.getElementById('fechaInicio').valueAsDate = hace30Dias;
+            document.getElementById('fechaFin').valueAsDate = hoy;
+            
+            cargarDatos();
+        });
+
+        async function cargarDatos() {
+            const fechaInicio = document.getElementById('fechaInicio').value;
+            const fechaFin = document.getElementById('fechaFin').value;
+            const asesorId = document.getElementById('asesorSelect').value;
+            const municipio = document.getElementById('municipioSelect').value;
+            const estado = document.getElementById('estadoSelect').value;
+
+            const params = new URLSearchParams({
+                ...(fechaInicio && { fecha_inicio: fechaInicio }),
+                ...(fechaFin && { fecha_fin: fechaFin }),
+                ...(asesorId && { asesor_id: asesorId }),
+                ...(municipio && { municipio: municipio }),
+                ...(estado && { estado: estado })
+            });
+
+            try {
+                // Cargar estadísticas
+                const response = await fetch(`/admin/api/estadisticas-contratos?${params}`);
+                const data = await response.json();
+
+                // Actualizar stats cards
+                document.getElementById('totalContratos').textContent = data.total_contratos;
+                
+                let instalados = 0, porRevisar = 0, rechazados = 0;
+                data.por_estado.forEach(item => {
+                    if (item.estado === 'INSTALADO') instalados = item.cantidad;
+                    if (item.estado === 'POR_REVISAR') porRevisar = item.cantidad;
+                    if (item.estado === 'RECHAZADO') rechazados = item.cantidad;
+                });
+                
+                document.getElementById('totalInstalados').textContent = instalados;
+                document.getElementById('totalPorRevisar').textContent = porRevisar;
+                document.getElementById('totalRechazados').textContent = rechazados;
+
+                // Actualizar gráficas
+                actualizarChartCiudad(data.por_municipio);
+                actualizarChartAsesor(data.por_asesor);
+                
+                // Cargar tendencia
+                await cargarTendencia(params);
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cargar los datos');
+            }
+        }
+
+        async function cargarTendencia(params) {
+            try {
+                const response = await fetch(`/admin/api/contratos-tendencia?${params}`);
+                const data = await response.json();
+                actualizarChartTendencia(data);
+            } catch (error) {
+                console.error('Error cargando tendencia:', error);
+            }
+        }
+
+        function actualizarChartCiudad(datos) {
+            const ctx = document.getElementById('chartCiudad').getContext('2d');
+            
+            if (chartCiudad) chartCiudad.destroy();
+            
+            chartCiudad = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: datos.map(d => d.municipio),
+                    datasets: [{
+                        label: 'Contratos',
+                        data: datos.map(d => d.cantidad),
+                        backgroundColor: colors.primary,
+                        borderRadius: 8,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 13 },
+                            borderColor: colors.primary,
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 },
+                            grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function actualizarChartAsesor(datos) {
+            const ctx = document.getElementById('chartAsesor').getContext('2d');
+            
+            if (chartAsesor) chartAsesor.destroy();
+            
+            chartAsesor = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: datos.map(d => d.asesor),
+                    datasets: [{
+                        data: datos.map(d => d.cantidad),
+                        backgroundColor: colors.palette.slice(0, datos.length),
+                        borderWidth: 3,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                font: { size: 12, weight: '500' }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12
+                        }
+                    }
+                }
+            });
+        }
+
+        function actualizarChartTendencia(datos) {
+            const ctx = document.getElementById('chartTendencia').getContext('2d');
+            
+            if (chartTendencia) chartTendencia.destroy();
+            
+            const fechas = datos.map(d => {
+                const fecha = new Date(d.fecha);
+                return `${fecha.getDate()}/${fecha.getMonth() + 1}`;
+            });
+            
+            chartTendencia = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: fechas,
+                    datasets: [
+                        {
+                            label: 'Instalados',
+                            data: datos.map(d => d.INSTALADO || 0),
+                            borderColor: colors.success,
+                            backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            borderWidth: 3,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: 'Por Revisar',
+                            data: datos.map(d => d.POR_REVISAR || 0),
+                            borderColor: colors.warning,
+                            backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            borderWidth: 3,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: 'Rechazados',
+                            data: datos.map(d => d.RECHAZADO || 0),
+                            borderColor: colors.danger,
+                            backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            borderWidth: 3,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                padding: 15,
+                                font: { size: 13, weight: '600' },
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 },
+                            grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function limpiarFiltros() {
+            const hoy = new Date();
+            const hace30Dias = new Date(hoy);
+            hace30Dias.setDate(hoy.getDate() - 30);
+            
+            document.getElementById('fechaInicio').valueAsDate = hace30Dias;
+            document.getElementById('fechaFin').valueAsDate = hoy;
+            document.getElementById('asesorSelect').value = '';
+            document.getElementById('municipioSelect').value = '';
+            document.getElementById('estadoSelect').value = 'todos';
+            
+            cargarDatos();
+        }
+    </script>
+</body>
+</html>

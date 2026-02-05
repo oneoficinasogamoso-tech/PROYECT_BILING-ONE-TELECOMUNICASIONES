@@ -3,70 +3,295 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Administrador - ONE</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <title>Dashboard Admin - ONE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #7C3AED;
+            --primary-dark: #5B21B6;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --info: #3B82F6;
+            --bg-main: #F9FAFB;
+            --bg-card: #FFFFFF;
+            --text-primary: #111827;
+            --text-secondary: #6B7280;
+            --border: #E5E7EB;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+        }
+        .header {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+            color: white;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-size: 1.75rem;
+            font-weight: 800;
+        }
+        .user-info {
+            font-size: 0.875rem;
+            opacity: 0.95;
+        }
+        .nav-menu {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        .nav-link {
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            padding: 0.625rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+        .nav-link.active {
+            background: rgba(255, 255, 255, 0.25);
+        }
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+        .welcome {
+            margin-bottom: 2rem;
+        }
+        .welcome h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .welcome p {
+            color: var(--text-secondary);
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            transition: all 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .stat-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        .stat-value {
+            font-size: 2.25rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .stat-card.primary { border-left: 4px solid var(--primary); }
+        .stat-card.primary .stat-icon { background: rgba(124, 58, 237, 0.1); color: var(--primary); }
+        .stat-card.primary .stat-value { color: var(--primary); }
+        
+        .stat-card.success { border-left: 4px solid var(--success); }
+        .stat-card.success .stat-icon { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .stat-card.success .stat-value { color: var(--success); }
+        
+        .stat-card.warning { border-left: 4px solid var(--warning); }
+        .stat-card.warning .stat-icon { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .stat-card.warning .stat-value { color: var(--warning); }
+        
+        .stat-card.info { border-left: 4px solid var(--info); }
+        .stat-card.info .stat-icon { background: rgba(59, 130, 246, 0.1); color: var(--info); }
+        .stat-card.info .stat-value { color: var(--info); }
+        
+        .stat-card.danger { border-left: 4px solid var(--danger); }
+        .stat-card.danger .stat-icon { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+        .stat-card.danger .stat-value { color: var(--danger); }
+        
+        .quick-actions {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 2rem;
+            border: 1px solid var(--border);
+        }
+        .quick-actions h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+        }
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        .action-btn {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.5rem;
+            background: var(--bg-main);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .action-btn:hover {
+            border-color: var(--primary);
+            background: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        .action-icon {
+            font-size: 1.5rem;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            .nav-menu {
+                flex-direction: column;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div class="dashboard-container">
-        <nav class="sidebar">
-            <div class="sidebar-header">
-                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="ONE" class="sidebar-logo">
-                <h3>Administrador</h3>
+    <header class="header">
+        <div class="header-content">
+            <div>
+                <div class="logo">🔐 ONE Admin Panel</div>
+                <div class="user-info">{{ nombre }} - ADMINISTRADOR</div>
             </div>
-            
-            <div class="user-info">
-                <div class="user-avatar">{{ nombre[0] }}</div>
-                <p class="user-name">{{ nombre }}</p>
-                <span class="user-role">ADMIN</span>
-            </div>
-            
-            <ul class="sidebar-menu">
-                <li class="active"><a href="#"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> Dashboard</a></li>
-            </ul>
-            
-            <a href="{{ url_for('login.logout') }}" class="btn-logout">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"></path>
-                </svg>
-                Cerrar Sesión
-            </a>
+        </div>
+        <nav class="nav-menu">
+            <a href="{{ url_for('admin.dashboard') }}" class="nav-link active">🏠 Dashboard</a>
+            <a href="{{ url_for('admin.usuarios') }}" class="nav-link">👥 Usuarios</a>
+            <a href="{{ url_for('admin.ver_contratos') }}" class="nav-link">📋 Contratos</a>
+            <a href="{{ url_for('admin.resumen_mensual') }}" class="nav-link">📅 Resumen</a>
+            <a href="{{ url_for('admin.analisis_ventas') }}" class="nav-link">📊 Análisis</a>
         </nav>
-        
-        <main class="main-content">
-            <header class="content-header">
-                <h1>Panel de Administración</h1>
-                <p>Bienvenido, {{ nombre }}</p>
-            </header>
-            
-            <div class="dashboard-grid">
-                <div class="card card-primary">
-                    <div class="card-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="9" cy="7" r="4"></circle>
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path>
-                        </svg>
-                    </div>
-                    <div class="card-content">
-                        <h3>Gestión de Usuarios</h3>
-                        <p>Administra usuarios del sistema</p>
-                    </div>
+    </header>
+
+    <div class="container">
+        <div class="welcome">
+            <h1>¡Bienvenido, {{ nombre }}! 👋</h1>
+            <p>Panel de administración de ONE Telecomunicaciones</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card primary">
+                <div class="stat-header">
+                    <span class="stat-label">Total Contratos</span>
+                    <div class="stat-icon">📄</div>
                 </div>
-                
-                <div class="card card-secondary">
-                    <div class="card-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="12" y1="1" x2="12" y2="23"></line>
-                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                        </svg>
-                    </div>
-                    <div class="card-content">
-                        <h3>Reportes</h3>
-                        <p>Visualiza estadísticas generales</p>
-                    </div>
-                </div>
+                <div class="stat-value">{{ total_contratos or 0 }}</div>
             </div>
-        </main>
+
+            <div class="stat-card success">
+                <div class="stat-header">
+                    <span class="stat-label">Instalados</span>
+                    <div class="stat-icon">✅</div>
+                </div>
+                <div class="stat-value">{{ instalados or 0 }}</div>
+            </div>
+
+            <div class="stat-card warning">
+                <div class="stat-header">
+                    <span class="stat-label">Por Revisar</span>
+                    <div class="stat-icon">⏳</div>
+                </div>
+                <div class="stat-value">{{ por_revisar or 0 }}</div>
+            </div>
+
+            <div class="stat-card info">
+                <div class="stat-header">
+                    <span class="stat-label">Total Asesores</span>
+                    <div class="stat-icon">👔</div>
+                </div>
+                <div class="stat-value">{{ total_asesores or 0 }}</div>
+            </div>
+
+            <div class="stat-card info">
+                <div class="stat-header">
+                    <span class="stat-label">Total Auxiliares</span>
+                    <div class="stat-icon">🛠️</div>
+                </div>
+                <div class="stat-value">{{ total_auxiliares or 0 }}</div>
+            </div>
+
+            <div class="stat-card danger">
+                <div class="stat-header">
+                    <span class="stat-label">Total Usuarios</span>
+                    <div class="stat-icon">👥</div>
+                </div>
+                <div class="stat-value">{{ total_usuarios or 0 }}</div>
+            </div>
+        </div>
+
+        <div class="quick-actions">
+            <h2>⚡ Acciones Rápidas</h2>
+            <div class="actions-grid">
+                <a href="{{ url_for('admin.crear_usuario') }}" class="action-btn">
+                    <span class="action-icon">➕</span>
+                    <span>Crear Usuario</span>
+                </a>
+                <a href="{{ url_for('admin.usuarios') }}" class="action-btn">
+                    <span class="action-icon">👥</span>
+                    <span>Gestionar Usuarios</span>
+                </a>
+                <a href="{{ url_for('admin.ver_contratos') }}" class="action-btn">
+                    <span class="action-icon">📋</span>
+                    <span>Ver Contratos</span>
+                </a>
+                <a href="{{ url_for('admin.analisis_ventas') }}" class="action-btn">
+                    <span class="action-icon">📊</span>
+                    <span>Análisis de Ventas</span>
+                </a>
+            </div>
+        </div>
     </div>
 </body>
 </html>
