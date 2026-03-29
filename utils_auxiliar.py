@@ -1,8 +1,3 @@
-"""
-Utilidades específicas para el rol AUXILIAR
-Incluye generación de PDFs con plantilla sin marca de agua
-y funciones para insertar CC (frontal y trasera) y recibo en el documento Word
-"""
 
 import os
 from docxtpl import DocxTemplate, InlineImage

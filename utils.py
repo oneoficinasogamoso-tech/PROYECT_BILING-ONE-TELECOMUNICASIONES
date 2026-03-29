@@ -574,7 +574,7 @@ def formatear_fecha_contrato(fecha_obj):
         
         # Formatear diferentes versiones
         formatos = {
-            'mes_anio_espaciado': f"{mes:02d}          {anio % 100:02d}",  # "01          26"
+            'mes_anio_espaciado': f"{mes:02d}    {anio % 100:02d}",  # "01          26"
             'mes_anio_guion': f"{mes:02d}-{anio}",  # "01-2026"
             'fecha_completa_slash': f"{dia:02d}/{mes:02d}/{anio}",  # "27/01/2026"
             'mes_nombre': meses_es[mes],  # "Enero"
@@ -584,7 +584,7 @@ def formatear_fecha_contrato(fecha_obj):
             'anio_corto': f"{anio % 100:02d}",  # "26"
             
             # FECHA DE FINALIZACIÓN (1 AÑO DESPUÉS)
-            'finalizacion_mes_anio_espaciado': f"{mes_fin:02d}          {anio_fin % 100:02d}",  # "01          27"
+            'finalizacion_mes_anio_espaciado': f"{mes_fin:02d}    {anio_fin % 100:02d}",  # "01          27"
         }
         
         return formatos
